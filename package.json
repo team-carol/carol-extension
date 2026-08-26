@@ -1,0 +1,24 @@
+{
+  "name": "maimaidxtension",
+  "description": "maimaiDX NET을 위한 한국어 번역·곡 검색 크롬 익스텐션 (비공식)",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wxt",
+    "build": "wxt build",
+    "zip": "wxt zip",
+    "typecheck": "wxt prepare && tsc --noEmit",
+    "postinstall": "wxt prepare",
+    "dict": "node scripts/dict.mjs"
+  },
+  "dependencies": {
+    "preact": "^10.24.3"
+  },
+  "devDependencies": {
+    "@preact/preset-vite": "^2.9.0",
+    "typescript": "^5.6.3",
+    "wxt": "^0.19.13"
+  },
+  "packageManager": "pnpm@9.12.3"
+}
