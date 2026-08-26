@@ -96,3 +96,7 @@ src/
 
 주 대상은 국제판입니다. 곡 데이터 조회를 위해 `maimai.bitworkspace.kr`에도 접근하며,
 사용자 정보는 전송하지 않습니다. 수집한 데이터는 전부 브라우저 안에만 저장됩니다.
+
+## 라이선스
+
+[MIT](LICENSE). 곡명·별명 데이터는 [team-carol/carol](https://github.com/team-carol/carol)(MIT)에서 제공합니다.
