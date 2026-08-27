@@ -260,7 +260,7 @@
 	"Interrupt the song and move on to the result": "플레이 중간에 결과 화면으로 이동할 수 있습니다.",
 	"OFF": "끄기",
 	"ON": "켜기",
-	"BUTTONS": "버튼",
+	"BUTTONS": "버튼(2,3,6,7 동시 입력)",
 	"AUTO/{0}": "자동/{0} 미만",
 	"LIFE/{0}": "라이프/{0}",
 	"MIRROR MODE": "미러 모드",
