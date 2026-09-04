@@ -44,3 +44,39 @@ export const SETTING_UI_TRANSLATE = 'uiTranslate'
 export const SETTING_SONG_TITLES = 'songTitles'
 export const SETTING_SONG_SEARCH = 'songSearch'
 
+/** carol 동기화 버튼 표시 여부. 기본 OFF — 외부 서버로 데이터를 보내는 기능이라 옵트인. */
+export const SETTING_CAROL_SYNC = 'carolSync'
+
+/**
+ * carol 동기화 토큰(`/북마클릿` 으로 발급되는 bearer 토큰).
+ *
+ * 확장에는 암호화 at-rest 저장소가 없음. sync에 올리면 Google 클라우드까지 퍼지므로,
+ * 이 기기 로컬(storage.local, 평문)에만 둔다. 값은 낮고(그 유저 carol 프로필 캐시
+ * 덮어쓰기 + 설정 접근이 전부), 회전 수단이 없으니 유출 시 carol쪽 조치가 필요.
+ */
+const CAROL_TOKEN_KEY = 'carolToken'
+
+export const carolToken = {
+  async get(): Promise<string> {
+    return (await storage.get<string>(CAROL_TOKEN_KEY)) ?? ''
+  },
+  async set(value: string): Promise<void> {
+    if (value) await storage.set(CAROL_TOKEN_KEY, value)
+    else await storage.remove(CAROL_TOKEN_KEY)
+  },
+}
+
+/**
+ * 사용자가 붙여넣은 값에서 토큰만 추출.
+ * 가이드 링크 전체(`https://…/sync?code=abc`)를 붙여넣어도, 토큰만 붙여넣어도 됨.
+ */
+export function parseCarolToken(input: string): string {
+  const s = input.trim()
+  if (!s) return ''
+  const m = s.match(/[?&]code=([^&\s]+)/)
+  if (m?.[1]) return decodeURIComponent(m[1])
+  // URL은 아니지만 슬래시가 들어 있으면 잘못 붙여넣은 것으로 보고 마지막 조각을 시도
+  if (s.includes('/')) return s.split('/').pop()?.trim() ?? ''
+  return s
+}
+

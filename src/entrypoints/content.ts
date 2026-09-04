@@ -1,5 +1,6 @@
 import { destroyTranslate, initTranslate } from '@/core/translate'
 import {
+  SETTING_CAROL_SYNC,
   SETTING_SONG_SEARCH,
   SETTING_SONG_TITLES,
   SETTING_UI_TRANSLATE,
@@ -13,6 +14,7 @@ import {
 } from '@/features/songData'
 import { destroySongTitles, initSongTitles } from '@/features/songTitles'
 import { destroySongSearch, initSongSearch } from '@/features/songSearch'
+import { destroyCarolSync, initCarolSync } from '@/features/carolButton'
 
 export default defineContentScript({
   matches: [
@@ -54,15 +56,17 @@ async function startSearch(): Promise<void> {
  *  3. 곡 검색 — 화면에 뜬 제목을 읽어 색인하므로 곡명 번역 뒤여야 함
  */
 async function setup(): Promise<void> {
-  const [uiOn, titlesOn, searchOn] = await Promise.all([
+  const [uiOn, titlesOn, searchOn, carolOn] = await Promise.all([
     settings.get(SETTING_UI_TRANSLATE, true),
     settings.get(SETTING_SONG_TITLES, true),
     settings.get(SETTING_SONG_SEARCH, true),
+    settings.get(SETTING_CAROL_SYNC, false), // 외부 전송이라 옵트인
   ])
 
   if (uiOn) initTranslate()
   if (titlesOn) await startTitles()
   if (searchOn) await startSearch()
+  if (carolOn) initCarolSync()
 
   // 토글 감시는 여기서 한 번만 등록. setup 안에서 재귀적으로 걸면
   // 토글할 때마다 리스너가 쌓임.
@@ -77,6 +81,10 @@ async function setup(): Promise<void> {
   settings.watch<boolean>(SETTING_SONG_SEARCH, (on) => {
     if (on) void startSearch()
     else destroySongSearch()
+  })
+  settings.watch<boolean>(SETTING_CAROL_SYNC, (on) => {
+    if (on) initCarolSync()
+    else destroyCarolSync()
   })
 }
 
