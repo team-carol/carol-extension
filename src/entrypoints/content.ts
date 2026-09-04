@@ -1,9 +1,11 @@
 import { destroyTranslate, initTranslate } from '@/core/translate'
 import {
+  SETTING_CAROL_SYNC,
   SETTING_SONG_SEARCH,
   SETTING_SONG_TITLES,
   SETTING_UI_TRANSLATE,
   settings,
+  toCarolMode,
 } from '@/core/storage'
 import {
   GET_SONG_ALIASES,
@@ -13,6 +15,8 @@ import {
 } from '@/features/songData'
 import { destroySongTitles, initSongTitles } from '@/features/songTitles'
 import { destroySongSearch, initSongSearch } from '@/features/songSearch'
+import { destroyCarolSync, initCarolSync } from '@/features/carolButton'
+import { destroyCarolAuto, initCarolAuto } from '@/features/carolAuto'
 
 export default defineContentScript({
   matches: [
@@ -53,16 +57,31 @@ async function startSearch(): Promise<void> {
  *  2. 곡명 번역 — 백그라운드 데이터 필요
  *  3. 곡 검색 — 화면에 뜬 제목을 읽어 색인하므로 곡명 번역 뒤여야 함
  */
+/** carol 모드에 맞춰 버튼/자동 동기화를 켠다. off면 둘 다 정리. */
+function applyCarolMode(raw: unknown): void {
+  const mode = toCarolMode(raw)
+  if (mode === 'off') {
+    destroyCarolAuto()
+    destroyCarolSync()
+    return
+  }
+  initCarolSync() // manual · auto 공통: 버튼은 항상
+  if (mode === 'auto') initCarolAuto()
+  else destroyCarolAuto()
+}
+
 async function setup(): Promise<void> {
-  const [uiOn, titlesOn, searchOn] = await Promise.all([
+  const [uiOn, titlesOn, searchOn, carolRaw] = await Promise.all([
     settings.get(SETTING_UI_TRANSLATE, true),
     settings.get(SETTING_SONG_TITLES, true),
     settings.get(SETTING_SONG_SEARCH, true),
+    settings.get<unknown>(SETTING_CAROL_SYNC, 'off'), // 외부 전송이라 옵트인
   ])
 
   if (uiOn) initTranslate()
   if (titlesOn) await startTitles()
   if (searchOn) await startSearch()
+  applyCarolMode(carolRaw)
 
   // 토글 감시는 여기서 한 번만 등록. setup 안에서 재귀적으로 걸면
   // 토글할 때마다 리스너가 쌓임.
@@ -78,6 +97,7 @@ async function setup(): Promise<void> {
     if (on) void startSearch()
     else destroySongSearch()
   })
+  settings.watch<unknown>(SETTING_CAROL_SYNC, (raw) => applyCarolMode(raw))
 }
 
 /** DOM 준비되면 콜백. */

@@ -177,3 +177,152 @@ body {
 .mmp-switch input:disabled + .mmp-track {
   opacity: 0.5;
 }
+
+/* carol 동기화 섹션 */
+
+.mmp-carol {
+  margin-top: 4px;
+  padding: 8px 0 2px;
+  border-top: 1px solid var(--mmp-line);
+}
+
+.mmp-carol-hd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 6px;
+}
+
+/* 세그먼트 컨트롤 (끄기 / 수동 / 자동) */
+
+.mmp-seg {
+  display: inline-flex;
+  flex: none;
+  border: 1px solid var(--mmp-line);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--mmp-raise);
+}
+
+.mmp-seg-btn {
+  padding: 5px 10px;
+  border: 0;
+  border-left: 1px solid var(--mmp-line);
+  background: transparent;
+  color: var(--mmp-muted);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.mmp-seg-btn:first-child {
+  border-left: 0;
+}
+
+.mmp-seg-btn:hover:not(:disabled):not(.mmp-on) {
+  color: var(--mmp-fg);
+}
+
+.mmp-seg-btn.mmp-on {
+  background: var(--mmp-accent);
+  color: #fff;
+}
+
+.mmp-seg-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.mmp-carol-modehint {
+  margin: 4px 6px 0;
+  font-size: 11px;
+  color: var(--mmp-muted);
+}
+
+.mmp-carol-body {
+  padding: 6px 6px 8px;
+}
+
+.mmp-carol-note {
+  margin: 0 0 8px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--mmp-muted);
+}
+
+.mmp-carol-hint2 {
+  margin: 0 0 6px;
+  font-size: 11px;
+  color: var(--mmp-muted);
+}
+
+.mmp-carol-hint2 code,
+.mmp-carol-note code {
+  padding: 0 3px;
+  border-radius: 4px;
+  background: var(--mmp-raise);
+  font-size: 10.5px;
+}
+
+.mmp-carol-tok {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.mmp-carol-mask {
+  flex: 1;
+  min-width: 0;
+  font-size: 11px;
+  color: var(--mmp-fg);
+}
+
+.mmp-carol-in {
+  display: flex;
+  gap: 6px;
+}
+
+.mmp-carol-in input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--mmp-line);
+  border-radius: 7px;
+  background: var(--mmp-bg);
+  color: var(--mmp-fg);
+  font-size: 11px;
+}
+
+.mmp-carol-in input:focus-visible {
+  outline: 2px solid var(--mmp-accent);
+  outline-offset: 1px;
+}
+
+.mmp-carol-btn2 {
+  flex: none;
+  padding: 6px 10px;
+  border: 1px solid var(--mmp-line);
+  border-radius: 7px;
+  background: var(--mmp-raise);
+  color: var(--mmp-fg);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.mmp-carol-btn2:hover:not(:disabled) {
+  background: var(--mmp-line);
+}
+
+.mmp-carol-btn2:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.mmp-carol-btn2.mmp-primary {
+  background: var(--mmp-accent);
+  border-color: var(--mmp-accent);
+  color: #fff;
+}
