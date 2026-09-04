@@ -4,3 +4,5 @@ node_modules
 stats.html
 *.log
 .DS_Store
+.env.submit
+.env.submit.local
