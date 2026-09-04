@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'preact/hooks'
 import {
+  type CarolMode,
   SETTING_CAROL_SYNC,
   SETTING_SONG_SEARCH,
   SETTING_SONG_TITLES,
@@ -7,6 +8,7 @@ import {
   carolToken,
   parseCarolToken,
   settings,
+  toCarolMode,
 } from '@/core/storage'
 
 interface Item {
@@ -112,13 +114,23 @@ function Switch({
   )
 }
 
+const CAROL_MODES: Array<{ value: CarolMode; label: string; hint: string }> = [
+  { value: 'off', label: '끄기', hint: '' },
+  { value: 'manual', label: '수동', hint: '화면의 버튼을 눌렀을 때만 동기화' },
+  {
+    value: 'auto',
+    label: '자동',
+    hint: '홈 진입 시 플레이 카운트가 바뀌었으면 자동 동기화 (+ 버튼)',
+  },
+]
+
 /**
  * carol 프로필 동기화. 켜면 maimai NET 페이지에 동기화 버튼이 뜨고,
  * 누르면 프로필·기록 HTML이 carol 서버로 전송된다 — 다른 기능과 달리 외부 전송이라
  * 기본 OFF, 별도 섹션으로 분리하고 안내 문구를 붙인다.
  */
 function CarolSection() {
-  const [on, setOn] = useState(false)
+  const [mode, setMode] = useState<CarolMode>('off')
   const [ready, setReady] = useState(false)
   const [token, setToken] = useState('')
   const [draft, setDraft] = useState('')
@@ -126,17 +138,17 @@ function CarolSection() {
 
   useEffect(() => {
     void Promise.all([
-      settings.get(SETTING_CAROL_SYNC, false),
+      settings.get<unknown>(SETTING_CAROL_SYNC, 'off'),
       carolToken.get(),
-    ]).then(([enabled, tok]) => {
-      setOn(enabled)
+    ]).then(([raw, tok]) => {
+      setMode(toCarolMode(raw))
       setToken(tok)
       setReady(true)
     })
   }, [])
 
-  const toggle = useCallback((next: boolean) => {
-    setOn(next)
+  const pick = useCallback((next: CarolMode) => {
+    setMode(next)
     void settings.set(SETTING_CAROL_SYNC, next)
   }, [])
 
@@ -154,20 +166,34 @@ function CarolSection() {
     void carolToken.set('')
   }, [])
 
+  const on = mode !== 'off'
+  const hint = CAROL_MODES.find((m) => m.value === mode)?.hint ?? ''
+
   return (
     <section class="mmp-carol">
-      <label class="mmp-label">
-        <span class="mmp-text">
-          <span class="mmp-name">carol 프로필 동기화</span>
-          <span class="mmp-hint">maimai NET에 동기화 버튼 추가</span>
-        </span>
-        <Switch checked={on} disabled={!ready} onChange={toggle} />
-      </label>
+      <div class="mmp-carol-hd">
+        <span class="mmp-name">carol 프로필 동기화</span>
+        <div class="mmp-seg" role="group" aria-label="carol 동기화 모드">
+          {CAROL_MODES.map((m) => (
+            <button
+              key={m.value}
+              type="button"
+              class={'mmp-seg-btn' + (mode === m.value ? ' mmp-on' : '')}
+              disabled={!ready}
+              aria-pressed={mode === m.value}
+              onClick={() => pick(m.value)}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      {hint && <p class="mmp-carol-modehint">{hint}</p>}
 
       {on && (
         <div class="mmp-carol-body">
           <p class="mmp-carol-note">
-            누르면 프로필·플레이 기록 HTML이 carol 서버(maimai.bitworkspace.kr)로
+            프로필·플레이 기록 HTML이 carol 서버(maimai.bitworkspace.kr)로
             전송됩니다. SEGA 계정 정보는 보내지 않습니다. 토큰은 이 기기에만
             저장되며 브라우저 동기화에 올라가지 않습니다.
           </p>

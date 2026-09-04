@@ -17,6 +17,7 @@
  * 동시성 1 · 요청 간 800ms. maimai NET은 병렬 요청에 세션이 날아감(CLAUDE.md 참고).
  */
 import { region } from '@/core/selectors'
+import { carolSyncState } from '@/core/storage'
 
 const CAROL_ORIGIN = 'https://maimai.bitworkspace.kr'
 
@@ -91,24 +92,29 @@ export function isCarolSyncRunning(): boolean {
   return running
 }
 
+interface RunOpts {
+  /** 자동 모드에서 트리거된 실행 — 오버레이 헤더에 표시만 다름 */
+  auto?: boolean
+}
+
 /**
  * 동기화 1회 실행. maimai NET 페이지에서 호출.
  * @param token carol 동기화 토큰 (`/북마클릿` 으로 발급)
  */
-export async function runCarolSync(token: string): Promise<void> {
+export async function runCarolSync(token: string, opts: RunOpts = {}): Promise<void> {
   if (running) return
   const region = detectRegion()
   if (!region) {
-    alert('maimai DX NET 페이지에서 실행해주세요.')
+    if (!opts.auto) alert('maimai DX NET 페이지에서 실행해주세요.')
     return
   }
   if (!token) {
-    alert('carol 동기화 토큰이 없습니다. 익스텐션 팝업에서 먼저 등록하세요.')
+    if (!opts.auto) alert('carol 동기화 토큰이 없습니다. 익스텐션 팝업에서 먼저 등록하세요.')
     return
   }
 
   running = true
-  const ui = openOverlay(region)
+  const ui = openOverlay(region, opts.auto ?? false)
   try {
     ui.section('PROFILE')
     ui.row('hm', '홈 데이터')
@@ -184,6 +190,14 @@ export async function runCarolSync(token: string): Promise<void> {
     }
 
     const result = await postSync(token, payload, ui)
+    if (result !== 'fail') {
+      // 자동 모드가 다음에 "카운트 바뀌었나" 판단할 기준점
+      await carolSyncState.patch({
+        syncedAt: Date.now(),
+        checkedAt: Date.now(),
+        playCount: parsePlayCount(collected.p ?? '') ?? undefined,
+      })
+    }
     if (result === 'no_change') ui.finish('muted', '이미 최신 상태')
     else if (result === 'initialized') ui.finish('muted', '첫 동기화 기준선 설정 완료')
     else if (result === 'ok') ui.finish('ok', '동기화 완료')
@@ -201,6 +215,34 @@ export async function runCarolSync(token: string): Promise<void> {
 function detectRegion(): Region | null {
   const r = region()
   return r === 'unknown' ? null : r
+}
+
+/**
+ * playerData HTML에서 현 버전 플레이 카운트. carol `parsePlayerData` 이식.
+ * "現バージョンプレイ回数：N回 … 累計プレイ回数：M回" (국제판은 영문 라벨).
+ * 자식 div가 없는 leaf div 중 라벨을 포함한 것에서 첫 숫자를 씀.
+ * 못 찾으면 null.
+ */
+export function parsePlayCount(html: string): number | null {
+  if (!html) return null
+  const doc = parseHtml(html)
+  const rx = /プレイ回数|play\s*count/i
+
+  for (const div of Array.from(doc.querySelectorAll('div'))) {
+    if (div.querySelector('div')) continue // leaf만
+    const text = div.textContent ?? ''
+    if (!rx.test(text)) continue
+    const nums = (text.match(/[\d,]+/g) ?? []).map((s) => Number(s.replace(/,/g, '')))
+    if (nums.length && Number.isFinite(nums[0])) return nums[0] ?? null
+  }
+
+  const body = doc.body?.textContent ?? ''
+  const m = body.match(/(?:total\s*play|play\s*count|プレイ回数)[：:\s]*([\d,]+)/i)
+  if (m?.[1]) {
+    const n = Number(m[1].replace(/,/g, ''))
+    return Number.isFinite(n) ? n : null
+  }
+  return null
 }
 
 function sleep(ms: number): Promise<void> {
@@ -472,7 +514,7 @@ function injectStyle(): void {
   document.head.appendChild(style)
 }
 
-function openOverlay(region: Region): Overlay {
+function openOverlay(region: Region, auto: boolean): Overlay {
   injectStyle()
   document.getElementById(OV_ID)?.remove()
 
@@ -481,7 +523,7 @@ function openOverlay(region: Region): Overlay {
   ov.innerHTML =
     `<div class="mmp-carol-hd">` +
     `<div><span class="mmp-carol-brand">carol<b>bot</b></span>` +
-    `<span class="mmp-carol-rg">${region === 'jp' ? 'JP' : 'INTERNATIONAL'}</span></div>` +
+    `<span class="mmp-carol-rg">${auto ? '자동 · ' : ''}${region === 'jp' ? 'JP' : 'INTERNATIONAL'}</span></div>` +
     `<button type="button" class="mmp-carol-x" aria-label="닫기">✕</button></div>` +
     `<div class="mmp-carol-body"></div>`
   document.body.appendChild(ov)

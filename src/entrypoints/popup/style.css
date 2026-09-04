@@ -182,12 +182,66 @@ body {
 
 .mmp-carol {
   margin-top: 4px;
-  padding-top: 4px;
+  padding: 8px 0 2px;
   border-top: 1px solid var(--mmp-line);
 }
 
+.mmp-carol-hd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 6px;
+}
+
+/* 세그먼트 컨트롤 (끄기 / 수동 / 자동) */
+
+.mmp-seg {
+  display: inline-flex;
+  flex: none;
+  border: 1px solid var(--mmp-line);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--mmp-raise);
+}
+
+.mmp-seg-btn {
+  padding: 5px 10px;
+  border: 0;
+  border-left: 1px solid var(--mmp-line);
+  background: transparent;
+  color: var(--mmp-muted);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.mmp-seg-btn:first-child {
+  border-left: 0;
+}
+
+.mmp-seg-btn:hover:not(:disabled):not(.mmp-on) {
+  color: var(--mmp-fg);
+}
+
+.mmp-seg-btn.mmp-on {
+  background: var(--mmp-accent);
+  color: #fff;
+}
+
+.mmp-seg-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.mmp-carol-modehint {
+  margin: 4px 6px 0;
+  font-size: 11px;
+  color: var(--mmp-muted);
+}
+
 .mmp-carol-body {
-  padding: 2px 6px 8px;
+  padding: 6px 6px 8px;
 }
 
 .mmp-carol-note {

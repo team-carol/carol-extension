@@ -147,12 +147,14 @@ maimai NET은 동시 요청 / 다중 탭에 매우 취약함. 병렬 `fetch`를 
 - 설정: `chrome.storage.sync` (기기 간 동기화)
 - 스냅샷은 날짜별 키로 분리 저장. 통짜 객체 하나에 몰아넣으면 쓰기마다 전체 직렬화라 느려짐
 - 외부 서버로 데이터 전송 금지. 전부 로컬.
-  - **예외: carol 프로필 동기화** (`features/carolButton.ts` + `carolSync.ts`). team-carol/carol
-    (디스코드 봇)의 북마클릿을 익스텐션 버튼으로 옮긴 것. 사용자가 팝업에서 명시적으로 켜고
-    토큰을 등록해야만 동작하며(기본 OFF), 켠 뒤 버튼을 눌렀을 때만 maimai NET HTML을
-    carol 서버(`maimai.bitworkspace.kr`)로 전송함. 자동 전송·백그라운드 폴링 없음.
-    토큰은 `storage.local`에만 저장(sync 클라우드로 안 보냄). carol 서버 URL은 곡 별명
-    API와 같은 오리진이라 `host_permissions` 추가 없음. `docs/carol-sync.md` 참고.
+  - **예외: carol 프로필 동기화** (`features/carolButton.ts` + `carolAuto.ts` + `carolSync.ts`).
+    team-carol/carol(디스코드 봇)의 북마클릿을 익스텐션 안으로 옮긴 것. 사용자가 팝업에서
+    명시적으로 모드를 켜고(기본 `off`, `manual`/`auto` 선택) 토큰을 등록해야만 동작함.
+    `manual`은 버튼 클릭 시에만, `auto`는 **홈 진입 시 플레이 카운트가 바뀌었을 때** 1회
+    (`playerData` 1요청으로 확인, 10분 스로틀, 백그라운드 타이머 없음) maimai NET HTML을
+    carol 서버(`maimai.bitworkspace.kr`)로 전송함. 토큰·상태는 `storage.local`에만 저장.
+    carol 서버 URL은 곡 별명 API와 같은 오리진이라 `host_permissions` 추가 없음.
+    `docs/carol-sync.md` 참고.
 
 ## 경계
 

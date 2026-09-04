@@ -46,6 +46,24 @@ maimai NET의 CSP에 막힐 수도 있다. 그래서 수집 로직(`src/features
 
 carol 스크래퍼가 페이지를 늘리거나 키를 바꾸면 `carolSync.ts`도 맞춰야 한다.
 
+## 동기화 모드 (`끄기` / `수동` / `자동`)
+
+팝업 → **carol 프로필 동기화** 세그먼트에서 고른다. 기본 `끄기`.
+
+- **수동** — maimai NET 우하단에 `carol 동기화` 버튼을 띄운다. 누를 때만 전체
+  수집(15요청)이 돈다. 버튼 두 번째 줄에 마지막 동기화 경과 시간 표시.
+- **자동** — 수동 버튼에 더해, **홈 화면 진입 시** 조건부 자동 동기화:
+  1. `carolSyncState.checkedAt` 스로틀(10분) 안이면 아무것도 안 함
+  2. `playerData` **1요청**으로 현 버전 플레이 카운트를 읽음 (`parsePlayCount`,
+     carol `parsePlayerData` 이식)
+  3. 지난 동기화 때 카운트와 같으면 종료, 다르면(또는 첫 실행) 전체 동기화 실행
+  - 백그라운드 타이머·폴링 없음. 콘텐츠 스크립트가 홈에서 뜰 때가 유일한 트리거.
+  - `features/carolAuto.ts`. 홈 경로 판정은 `// TODO: 실제 페이지에서 확인`.
+
+전체 동기화가 성공하면 그때 수집한 `playerData`에서 카운트를 파싱해
+`carolSyncState`(`storage.local`)에 `{ syncedAt, playCount, checkedAt }`로 저장한다 —
+자동 모드의 다음 비교 기준점. 추가 요청은 없다.
+
 ## 토큰
 
 carol 동기화 토큰은 `crypto.randomBytes(12)` (24 hex), 디스코드 유저당 1개, 고정값이다.
@@ -63,9 +81,12 @@ DB를 손봐야 한다.
 
 ## 토글 / 정리
 
-- 설정 키: `carolSync` (`storage.sync`, 기본 `false`)
+- 모드 키: `carolSync` (`storage.sync`, `'off' | 'manual' | 'auto'`, 기본 `'off'`).
+  예전 boolean 값과 호환(`toCarolMode`: `true`→`manual`).
 - 토큰 키: `carolToken` (`storage.local`)
-- `features/carolButton.ts`가 `init()` / `destroy()` 제공 — 토글 OFF 시 버튼·스타일 제거.
+- 상태 키: `carolSyncState` (`storage.local`)
+- `content.ts`의 `applyCarolMode()`가 모드에 따라 `carolButton` / `carolAuto`의
+  `init()` / `destroy()`를 호출. 각 모듈은 리스너·DOM을 누수 없이 정리한다.
 - 실제 동기화 오버레이는 `carolSync.ts`가 매번 새로 만들고 완료 후 자동으로 사라진다.
 
 ## 남은 일

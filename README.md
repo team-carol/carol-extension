@@ -23,12 +23,16 @@ maimaiDX NET을 한국어로 보고, 곡을 별명으로 찾는 크롬 확장.
 
 곡명·별명 데이터는 [team-carol/carol](https://github.com/team-carol/carol)의 API에서 받아옵니다.
 
-**carol 프로필 동기화** (선택, 기본 꺼짐) — maimai DX NET 화면에 동기화 버튼을 추가합니다.
-[carol](https://github.com/team-carol/carol) 봇의 북마클릿을 버튼으로 옮긴 것으로,
-누르면 프로필·플레이 기록 HTML을 carol 서버(`maimai.bitworkspace.kr`)로 보냅니다.
-SEGA 계정 정보는 보내지 않습니다. 팝업에서 켜고 디스코드 `/북마클릿`으로 받은 토큰을
-등록해야 동작하며, 토큰은 이 기기(`storage.local`)에만 저장됩니다.
-자세한 내용은 [docs/carol-sync.md](docs/carol-sync.md).
+**carol 프로필 동기화** (선택, 기본 꺼짐) — [carol](https://github.com/team-carol/carol)
+봇의 프로필 동기화 북마클릿을 익스텐션 안으로 옮긴 것입니다. 프로필·플레이 기록 HTML을
+carol 서버(`maimai.bitworkspace.kr`)로 보냅니다(SEGA 계정 정보는 보내지 않음).
+팝업에서 모드를 고르고 디스코드 `/북마클릿`으로 받은 토큰을 등록해야 동작합니다.
+
+- **수동** — maimai DX NET 화면의 버튼을 눌렀을 때만 동기화
+- **자동** — 홈 화면에 들어왔을 때 플레이 카운트가 바뀌었으면 자동 동기화 (+ 버튼)
+
+토큰은 이 기기(`storage.local`)에만 저장됩니다. 자세한 내용은
+[docs/carol-sync.md](docs/carol-sync.md).
 
 ## 개발
 
