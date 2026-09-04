@@ -1,0 +1,102 @@
+name: Deploy to Chrome Web Store
+
+# 배포는 버전 태그를 밀 때만. 수동 실행(workflow_dispatch)은 dry-run 검증용.
+#
+# 필요한 리포지토리 시크릿 (Settings → Secrets and variables → Actions):
+#   CHROME_EXTENSION_ID   웹스토어 확장 ID
+#   CHROME_CLIENT_ID      Google Cloud OAuth 클라이언트 ID
+#   CHROME_CLIENT_SECRET  OAuth 클라이언트 시크릿
+#   CHROME_REFRESH_TOKEN  chromewebstore.googleapis.com 스코프로 발급한 refresh token
+# 발급 절차는 docs/deploy.md 참고.
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: '빌드·검증만 하고 웹스토어 업로드는 건너뜀'
+        type: boolean
+        default: true
+      skip_review:
+        description: '업로드만 하고 심사 제출은 보류 (웹스토어 draft로 둠)'
+        type: boolean
+        default: false
+
+# 배포 잡이 겹치면 웹스토어 API가 충돌하므로 직렬화. 진행 중인 건 취소하지 않음.
+concurrency:
+  group: chrome-web-store-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: write  # 태그 배포 시 GitHub 릴리스 생성
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4  # 버전은 package.json의 packageManager에서 읽음
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: 사전 검사 (ko.json 키 충돌·패턴 오류)
+        run: pnpm dict
+
+      - name: 타입 검사
+        run: pnpm typecheck
+
+      - name: 태그와 package.json 버전 일치 확인
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          PKG_VERSION="$(node -p "require('./package.json').version")"
+          echo "tag=$TAG_VERSION / package.json=$PKG_VERSION"
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "::error::태그($TAG_VERSION)와 package.json 버전($PKG_VERSION)이 다릅니다. package.json을 먼저 올리고 태그를 다시 다세요."
+            exit 1
+          fi
+
+      - name: 빌드 + zip
+        run: pnpm zip
+
+      - name: zip 경로 계산
+        id: zip
+        run: |
+          NAME="$(node -p "require('./package.json').name")"
+          VERSION="$(node -p "require('./package.json').version")"
+          PATH_="$(ls .output/${NAME}-${VERSION}-chrome.zip)"
+          echo "path=$PATH_" >> "$GITHUB_OUTPUT"
+          echo "zip: $PATH_"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chrome-mv3-zip
+          path: ${{ steps.zip.outputs.path }}
+          if-no-files-found: error
+
+      - name: Chrome Web Store 제출
+        # workflow_dispatch에서 dry_run 체크를 끄거나, 태그 push면 실제 제출.
+        # (push 이벤트에선 inputs.dry_run이 null이라 조건이 참이 됨)
+        if: ${{ !inputs.dry_run }}
+        env:
+          CHROME_EXTENSION_ID: ${{ secrets.CHROME_EXTENSION_ID }}
+          CHROME_CLIENT_ID: ${{ secrets.CHROME_CLIENT_ID }}
+          CHROME_CLIENT_SECRET: ${{ secrets.CHROME_CLIENT_SECRET }}
+          CHROME_REFRESH_TOKEN: ${{ secrets.CHROME_REFRESH_TOKEN }}
+          CHROME_SKIP_SUBMIT_REVIEW: ${{ inputs.skip_review }}
+        run: pnpm exec wxt submit --chrome-zip "${{ steps.zip.outputs.path }}"
+
+      - name: GitHub 릴리스
+        if: ${{ startsWith(github.ref, 'refs/tags/v') && !inputs.dry_run }}
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.zip.outputs.path }}
+          generate_release_notes: true
