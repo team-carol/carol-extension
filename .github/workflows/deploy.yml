@@ -88,7 +88,6 @@ jobs:
           CHROME_PUBLISHER_ID: ${{ secrets.CHROME_PUBLISHER_ID }}
           CHROME_SERVICE_ACCOUNT_CLIENT_EMAIL: ${{ secrets.CHROME_SERVICE_ACCOUNT_CLIENT_EMAIL }}
           CHROME_SERVICE_ACCOUNT_PRIVATE_KEY: ${{ secrets.CHROME_SERVICE_ACCOUNT_PRIVATE_KEY }}
-          CHROME_SKIP_SUBMIT_REVIEW: ${{ inputs.skip_review }}
         run: |
           for key in CHROME_EXTENSION_ID CHROME_PUBLISHER_ID CHROME_SERVICE_ACCOUNT_CLIENT_EMAIL CHROME_SERVICE_ACCOUNT_PRIVATE_KEY; do
             if [ -z "${!key}" ]; then
@@ -98,6 +97,8 @@ jobs:
           done
           if [ "${{ inputs.dry_run }}" = 'true' ]; then
             pnpm submit --dry-run
+          elif [ "${{ inputs.skip_review }}" = 'true' ]; then
+            pnpm submit --skip-review
           else
             pnpm submit
           fi
