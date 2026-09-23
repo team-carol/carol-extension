@@ -2,8 +2,8 @@
 
 maimaiDX NET을 한국어로 보고, 곡을 별명으로 찾는 크롬 확장.
 
-세가 공식과 무관한 **비공식** 확장입니다. 사용자가 직접 연 페이지를 보조할 뿐,
-자동 로그인이나 백그라운드 수집은 하지 않습니다.
+세가 공식과 무관한 **비공식** 확장입니다. 사용자가 직접 연 페이지를 보조하며
+자동 로그인이나 상시 백그라운드 수집은 하지 않습니다.
 
 ## 기능
 
@@ -25,7 +25,8 @@ maimaiDX NET을 한국어로 보고, 곡을 별명으로 찾는 크롬 확장.
 
 **carol 프로필 동기화** (선택, 기본 꺼짐) — [carol](https://github.com/team-carol/carol)
 봇의 프로필 동기화 북마클릿을 익스텐션 안으로 옮긴 것입니다. 프로필·플레이 기록 HTML을
-carol 서버(`maimai.bitworkspace.kr`)로 보냅니다(SEGA 계정 정보는 보내지 않음).
+carol 서버(`https://maimai.team-carol.com`)로 보냅니다. SEGA 로그인 비밀번호를
+요청하거나 전송하지 않습니다.
 팝업에서 모드를 고르고 디스코드 `/북마클릿`으로 받은 토큰을 등록해야 동작합니다.
 
 - **수동** — maimai DX NET 화면의 버튼을 눌렀을 때만 동기화
@@ -36,7 +37,7 @@ carol 서버(`maimai.bitworkspace.kr`)로 보냅니다(SEGA 계정 정보는 보
 
 ## 개발
 
-Node 18+ / pnpm 필요.
+Node 22+ / pnpm 9 필요.
 
 ```bash
 pnpm install
@@ -126,8 +127,9 @@ src/
 | 국제판 | `https://maimaidx-eng.com/maimai-mobile/` |
 | 일본판 | `https://maimaidx.jp/maimai-mobile/` |
 
-주 대상은 국제판입니다. 곡 데이터 조회를 위해 `maimai.bitworkspace.kr`에도 접근하며,
-사용자 정보는 전송하지 않습니다. 수집한 데이터는 전부 브라우저 안에만 저장됩니다.
+주 대상은 국제판입니다. 곡명·별명 조회를 위해 `https://maimai.team-carol.com`에
+요청합니다. carol 동기화를 켠 경우에만 프로필·플레이 기록 HTML과 동기화 토큰을
+같은 서버로 전송합니다. 토큰과 동기화 상태는 이 기기의 브라우저에 저장됩니다.
 
 ## 라이선스
 

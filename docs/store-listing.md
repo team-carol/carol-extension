@@ -20,8 +20,8 @@
 ```
 캐롤익스텐션은 세가 maimai DX 공식 스코어 열람 사이트(maimai DX NET)를
 한국어로 보고, 곡을 별명으로 찾을 수 있게 해주는 비공식 확장입니다.
-세가 공식과 무관하며, 사용자가 직접 연 페이지를 보조할 뿐 자동 로그인이나
-백그라운드 수집은 하지 않습니다.
+세가 공식과 무관하며, 사용자가 직접 연 페이지를 보조합니다. 자동 로그인이나
+상시 백그라운드 수집은 하지 않습니다.
 
 ■ UI 문구 번역
 메뉴·버튼·안내 문구를 한국어로 치환합니다. 텍스트 노드 전체가 사전 항목과
@@ -41,12 +41,13 @@
  - 수동: maimai DX NET 화면의 버튼을 눌렀을 때만 동기화
  - 자동: 홈 화면에 접속했고 플레이 횟수가 지난 동기화 이후 바뀐 것이
    확인됐을 때만 동기화 (백그라운드 상시 수집 없음)
-동기화 시 프로필·플레이 기록 페이지의 HTML이 carol 서버로 전송됩니다.
-SEGA 계정 정보(아이디·비밀번호)는 전송하지 않습니다.
+동기화 시 프로필·플레이 기록 페이지의 HTML과 동기화 토큰이
+https://maimai.team-carol.com 으로 전송됩니다. SEGA 로그인 비밀번호를
+요청하거나 전송하지 않습니다.
 
-번역·곡 데이터는 team-carol/carol의 공개 API에서 받아옵니다.
-수집한 스코어·설정은 이 확장이 외부로 보내지 않고 브라우저 안에만 저장합니다
-(carol 동기화를 사용자가 직접 켠 경우 제외).
+곡명·별명 데이터는 같은 서버의 공개 API에서 받아옵니다. UI 번역 사전은
+확장에 포함돼 있습니다. carol 동기화를 켜지 않으면 프로필·플레이 기록 HTML을
+carol 서버로 전송하지 않습니다.
 ```
 
 ## 권한 사용 사유 (Permission justifications)
@@ -56,7 +57,7 @@ SEGA 계정 정보(아이디·비밀번호)는 전송하지 않습니다.
 | `storage` | 기능 토글, carol 동기화 토큰, 마지막 동기화 상태를 로컬에 저장. |
 | host: `https://maimaidx.jp/maimai-mobile/*` | 일본판 maimai DX NET 페이지에 번역·검색 UI를 주입. carol 동기화 시 로그인된 세션으로 해당 도메인의 프로필·기록 페이지를 읽음. |
 | host: `https://maimaidx-eng.com/maimai-mobile/*` | 국제판. 위와 동일. |
-| host: `https://maimai.bitworkspace.kr/*` | 곡명·별명 번역 데이터 조회(읽기 전용). carol 동기화를 켠 경우, 수집한 HTML을 이 도메인의 carol `/sync` 엔드포인트로 전송. |
+| host: `https://maimai.team-carol.com/*` | 곡명·별명 번역 데이터 조회(읽기 전용). carol 동기화를 켠 경우, 수집한 HTML을 이 도메인의 carol `/sync` 엔드포인트로 전송. |
 
 원격 코드 실행 없음 — 모든 스크립트는 번들에 포함. carol 동기화 로직도
 원격 `bookmarklet.js`를 주입하지 않고 확장 안에 재구현했습니다.
@@ -65,15 +66,16 @@ SEGA 계정 정보(아이디·비밀번호)는 전송하지 않습니다.
 
 **수집·전송하는 사용자 데이터**
 
-- 기본(번역·검색): 없음. 외부로 아무것도 보내지 않음.
+- 기본(번역·검색): 곡명·별명 조회를 위해 공개 API에 GET 요청. maimai DX NET의
+  프로필·플레이 기록 HTML과 carol 동기화 토큰은 전송하지 않음.
 - carol 동기화를 **사용자가 직접 켠 경우에 한해**:
   - 웹사이트 콘텐츠 — maimai DX NET의 프로필/플레이 기록/클리어 차트/지역
     페이지 HTML, 프로필 아바타 이미지
   - 인증 정보 — carol 동기화 토큰(사용자가 붙여넣어 등록, 로컬에만 저장,
     전송 시 대상 서버 식별용으로만 사용)
-  - 전송 대상: `maimai.bitworkspace.kr` (carol 서버). 개인정보처리방침:
-    https://maimai.bitworkspace.kr/privacy
-  - SEGA 계정 자격증명은 수집·전송하지 않음
+  - 전송 대상: `https://maimai.team-carol.com` (carol 서버)
+  - 개인정보처리방침: https://maimai.team-carol.com/privacy
+  - SEGA 로그인 비밀번호는 요청·전송하지 않음
 
 **데이터 사용 관련 확인란**
 
@@ -90,4 +92,4 @@ SEGA 계정 정보(아이디·비밀번호)는 전송하지 않습니다.
 ## 관련 문서
 
 - 동기화 상세: [carol-sync.md](carol-sync.md)
-- 배포 절차: [deploy.md](deploy.md) *(feat/deploy 브랜치)*
+- 배포 절차: [deploy.md](deploy.md)

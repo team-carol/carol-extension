@@ -193,8 +193,8 @@ function CarolSection() {
       {on && (
         <div class="mmp-carol-body">
           <p class="mmp-carol-note">
-            프로필·플레이 기록 HTML이 carol 서버(maimai.bitworkspace.kr)로
-            전송됩니다. SEGA 계정 정보는 보내지 않습니다. 토큰은 이 기기에만
+            프로필·플레이 기록 HTML이 carol 서버(maimai.team-carol.com)로
+            전송됩니다. SEGA 로그인 비밀번호는 보내지 않습니다. 토큰은 이 기기에만
             저장되며 브라우저 동기화에 올라가지 않습니다.
           </p>
 
@@ -214,7 +214,7 @@ function CarolSection() {
           <div class="mmp-carol-in">
             <input
               type="text"
-              placeholder="https://maimai.bitworkspace.kr/sync?code=…"
+              placeholder="https://maimai.team-carol.com/sync?code=…"
               value={draft}
               onInput={(e) => setDraft((e.target as HTMLInputElement).value)}
               onKeyDown={(e) => {

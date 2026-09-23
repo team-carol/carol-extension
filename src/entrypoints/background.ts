@@ -19,7 +19,7 @@ import {
   type SongMap,
 } from '@/features/songData'
 
-const API = 'https://maimai.bitworkspace.kr/api/aliases'
+const API = 'https://maimai.team-carol.com/api/aliases'
 const CACHE_KEY = 'songAliases'
 const TTL = 24 * 60 * 60 * 1000 // 곡 데이터는 게임 버전 단위로 바뀌는 준정적 데이터
 

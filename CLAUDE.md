@@ -152,7 +152,7 @@ maimai NET은 동시 요청 / 다중 탭에 매우 취약함. 병렬 `fetch`를 
     명시적으로 모드를 켜고(기본 `off`, `manual`/`auto` 선택) 토큰을 등록해야만 동작함.
     `manual`은 버튼 클릭 시에만, `auto`는 **홈 진입 시 플레이 카운트가 바뀌었을 때** 1회
     (`playerData` 1요청으로 확인, 10분 스로틀, 백그라운드 타이머 없음) maimai NET HTML을
-    carol 서버(`maimai.bitworkspace.kr`)로 전송함. 토큰·상태는 `storage.local`에만 저장.
+    carol 서버(`maimai.team-carol.com`)로 전송함. 토큰·상태는 `storage.local`에만 저장.
     carol 서버 URL은 곡 별명 API와 같은 오리진이라 `host_permissions` 추가 없음.
     `docs/carol-sync.md` 참고.
 

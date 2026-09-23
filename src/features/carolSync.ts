@@ -19,7 +19,7 @@
 import { region } from '@/core/selectors'
 import { carolSyncState } from '@/core/storage'
 
-const CAROL_ORIGIN = 'https://maimai.bitworkspace.kr'
+const CAROL_ORIGIN = 'https://maimai.team-carol.com'
 
 const OV_ID = 'mmp-carol-ov'
 const STYLE_ID = 'mmp-carol-style'
