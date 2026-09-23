@@ -2,7 +2,7 @@
   "name": "maimaidxtension",
   "description": "maimaiDX NET을 위한 한국어 번역·곡 검색 크롬 익스텐션 (비공식)",
   "license": "MIT",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "private": true,
   "type": "module",
   "scripts": {
