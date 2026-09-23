@@ -24,7 +24,7 @@ export default defineConfig({
       'https://maimaidx.jp/maimai-mobile/*',
       'https://maimaidx-eng.com/maimai-mobile/*',
       // 곡명 번역 데이터 조회 (읽기 전용, 사용자 정보 안 보냄)
-      'https://maimai.bitworkspace.kr/*',
+      'https://maimai.team-carol.com/*',
     ],
   },
 })

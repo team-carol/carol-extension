@@ -1,12 +1,12 @@
 name: Deploy to Chrome Web Store
 
-# 배포는 버전 태그를 밀 때만. 수동 실행(workflow_dispatch)은 dry-run 검증용.
+# 버전 태그를 밀거나 수동 실행할 때 Chrome Web Store API v2로 제출.
 #
 # 필요한 리포지토리 시크릿 (Settings → Secrets and variables → Actions):
 #   CHROME_EXTENSION_ID   웹스토어 확장 ID
-#   CHROME_CLIENT_ID      Google Cloud OAuth 클라이언트 ID
-#   CHROME_CLIENT_SECRET  OAuth 클라이언트 시크릿
-#   CHROME_REFRESH_TOKEN  chromewebstore.googleapis.com 스코프로 발급한 refresh token
+#   CHROME_PUBLISHER_ID   웹스토어 게시자 ID
+#   CHROME_SERVICE_ACCOUNT_CLIENT_EMAIL  Google Cloud 서비스 계정 이메일
+#   CHROME_SERVICE_ACCOUNT_PRIVATE_KEY   서비스 계정 JSON 키의 private_key
 # 발급 절차는 docs/deploy.md 참고.
 
 on:
@@ -16,7 +16,7 @@ on:
   workflow_dispatch:
     inputs:
       dry_run:
-        description: '빌드·검증만 하고 웹스토어 업로드는 건너뜀'
+        description: '인증·빌드를 검증하고 웹스토어 업로드는 건너뜀'
         type: boolean
         default: true
       skip_review:
@@ -42,7 +42,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
@@ -82,17 +82,25 @@ jobs:
           path: ${{ steps.zip.outputs.path }}
           if-no-files-found: error
 
-      - name: Chrome Web Store 제출
-        # workflow_dispatch에서 dry_run 체크를 끄거나, 태그 push면 실제 제출.
-        # (push 이벤트에선 inputs.dry_run이 null이라 조건이 참이 됨)
-        if: ${{ !inputs.dry_run }}
+      - name: Chrome Web Store API v2 제출
         env:
           CHROME_EXTENSION_ID: ${{ secrets.CHROME_EXTENSION_ID }}
-          CHROME_CLIENT_ID: ${{ secrets.CHROME_CLIENT_ID }}
-          CHROME_CLIENT_SECRET: ${{ secrets.CHROME_CLIENT_SECRET }}
-          CHROME_REFRESH_TOKEN: ${{ secrets.CHROME_REFRESH_TOKEN }}
+          CHROME_PUBLISHER_ID: ${{ secrets.CHROME_PUBLISHER_ID }}
+          CHROME_SERVICE_ACCOUNT_CLIENT_EMAIL: ${{ secrets.CHROME_SERVICE_ACCOUNT_CLIENT_EMAIL }}
+          CHROME_SERVICE_ACCOUNT_PRIVATE_KEY: ${{ secrets.CHROME_SERVICE_ACCOUNT_PRIVATE_KEY }}
           CHROME_SKIP_SUBMIT_REVIEW: ${{ inputs.skip_review }}
-        run: pnpm exec wxt submit --chrome-zip "${{ steps.zip.outputs.path }}"
+        run: |
+          for key in CHROME_EXTENSION_ID CHROME_PUBLISHER_ID CHROME_SERVICE_ACCOUNT_CLIENT_EMAIL CHROME_SERVICE_ACCOUNT_PRIVATE_KEY; do
+            if [ -z "${!key}" ]; then
+              echo "::error::Missing repository secret: $key"
+              exit 1
+            fi
+          done
+          if [ "${{ inputs.dry_run }}" = 'true' ]; then
+            pnpm submit --dry-run
+          else
+            pnpm submit
+          fi
 
       - name: GitHub 릴리스
         if: ${{ startsWith(github.ref, 'refs/tags/v') && !inputs.dry_run }}
