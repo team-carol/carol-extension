@@ -45,6 +45,20 @@ SEGA 로그인 비밀번호를 요청하거나 전송하지 않습니다.
 UI 번역 사전은 확장에 포함돼 있습니다.
 ```
 
+## 캡처 화면 (Screenshots)
+
+`docs/store/` — 1280×800, 24비트 PNG(알파 없음). 웹스토어 규격(최대 5장) 그대로 업로드.
+
+| 순서 | 파일 | 내용 |
+|---|---|---|
+| 1 | `screenshot-1-overview.png` | 소개 + 팝업 |
+| 2 | `screenshot-2-titles.png` | 곡명 한국어 표시 |
+| 3 | `screenshot-3-search.png` | 곡 검색 (별명 `판도라`) |
+| 4 | `screenshot-4-preset.png` | 게임 옵션 프리셋 (팝업 + 패널) |
+
+실제 maimai DX NET·실제 확장 화면을 v0.1.1 에서 캡처. 플레이어 이름·점수 등 개인 정보는 들어가지 않게 잘랐다.
+팝업의 토큰(`••••beef`)은 테스트용 가짜 값.
+
 ## 권한 사용 사유 (Permission justifications)
 
 | 권한 | 사유 |
