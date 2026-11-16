@@ -43,6 +43,8 @@ export const settings = {
 export const SETTING_UI_TRANSLATE = 'uiTranslate'
 export const SETTING_SONG_TITLES = 'songTitles'
 export const SETTING_SONG_SEARCH = 'songSearch'
+/** carol 게임 옵션 프리셋. carol 서버와 통신하므로 기본 off — 옵트인. */
+export const SETTING_OPTION_PRESET = 'optionPreset'
 
 /**
  * carol 토큰(`/북마클릿` 으로 발급되는 bearer 토큰). 옵션 프리셋 API 인증에 씀.

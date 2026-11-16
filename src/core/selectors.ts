@@ -36,6 +36,15 @@ export const SEL = {
   musicKindIcon: '.music_kind_icon',
 } as const
 
+/**
+ * 게임 옵션 페이지. carol 옵션 프리셋 클라이언트(`src/web/optionPreset.ts`)가 실제로 쓰는 값.
+ * 폼의 select 가 옵션 항목, hidden 입력이 CSRF token. 행 첫 칸(`tr.cells[0]`)이 항목 이름.
+ */
+export const OPTION_PAGE = {
+  path: '/maimai-mobile/home/userOption/updateUserOption/',
+  form: 'form[action*="updateUserOption/update"]',
+} as const
+
 /** location.hostname 기준 리전 판별. */
 export function region(): 'jp' | 'intl' | 'unknown' {
   const h = location.hostname

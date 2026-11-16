@@ -64,7 +64,7 @@ export class FetchQueue {
    * maimai NET 페이지를 텍스트로 받음. 큐 순서대로 하나씩.
    * 에러/점검 페이지면 큐를 중단시키고 `QueueAbortedError`를 던짐.
    */
-  fetchText(url: string): Promise<FetchedPage> {
+  fetchText(url: string, init: RequestInit = {}): Promise<FetchedPage> {
     const run = this.tail.then(async () => {
       if (this.aborted) throw this.aborted
       const wait = this.lastAt + MIN_GAP_MS - Date.now()
@@ -75,7 +75,12 @@ export class FetchQueue {
       this.inflight = ac
       const timer = setTimeout(() => ac.abort(), REQUEST_TIMEOUT)
       try {
-        const res = await fetch(url, { credentials: 'include', signal: ac.signal })
+        const res = await fetch(url, {
+          credentials: 'include',
+          cache: 'no-store',
+          ...init,
+          signal: ac.signal,
+        })
         const text = await res.text()
         if (isMaintenancePage(text)) {
           this.abort('maintenance')

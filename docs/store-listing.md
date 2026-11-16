@@ -6,13 +6,14 @@
 ## 기본 정보
 
 - **이름**: 캐롤익스텐션
-- **요약 (한 줄)**: maimai DX NET 한국어 번역 · 곡 검색 (비공식)
+- **요약 (한 줄)**: maimai DX NET 한국어 번역 · 곡 검색 · 게임 옵션 프리셋 (비공식)
 - **카테고리**: 도구 (Tools)
 - **언어**: 한국어
 
 ## 단일 목적 (Single purpose)
 
-> 사용자가 직접 연 maimai DX NET 페이지에 한국어 번역과 곡 검색을 입혀 열람을 돕습니다.
+> 사용자가 직접 연 maimai DX NET 페이지에 한국어 번역과 곡 검색을 입혀 열람을 돕고,
+> 사용자가 원하면 게임 옵션을 carol(디스코드 봇)에 프리셋으로 저장·적용하는 버튼을 제공합니다.
 
 ## 자세한 설명
 
@@ -33,6 +34,13 @@
 곡 목록 페이지에 검색창을 넣습니다. 별명, 한국어 제목, 원제로 찾을 수 있고
 공백은 무시합니다. 추가 네트워크 요청 없이 화면에 이미 그려진 곡만 거릅니다.
 
+■ 게임 옵션 프리셋 (선택, 기본 꺼짐)
+디스코드 봇 carol(github.com/team-carol/carol)의 옵션 프리셋 기능을 확장 버튼으로
+제공합니다. 게임 옵션을 이름 붙여 저장해 두고 한 번에 적용합니다. 팝업에서 켜고
+carol에서 발급한 토큰을 등록해야만 동작하며, 버튼을 눌렀을 때만 게임 옵션 값과
+옵션 페이지 HTML이 https://maimai.team-carol.com 으로 전송됩니다.
+SEGA 로그인 비밀번호를 요청하거나 전송하지 않습니다.
+
 곡명·별명 데이터는 carol(maimai.team-carol.com)의 공개 API에서 받아옵니다.
 UI 번역 사전은 확장에 포함돼 있습니다.
 ```
@@ -41,10 +49,10 @@ UI 번역 사전은 확장에 포함돼 있습니다.
 
 | 권한 | 사유 |
 |---|---|
-| `storage` | 기능 토글과 곡 데이터 캐시를 로컬에 저장. |
-| host: `https://maimaidx.jp/maimai-mobile/*` | 일본판 maimai DX NET 페이지에 번역·검색 UI를 주입. |
+| `storage` | 기능 토글, 곡 데이터 캐시, carol 토큰을 로컬에 저장. |
+| host: `https://maimaidx.jp/maimai-mobile/*` | 일본판 maimai DX NET 페이지에 번역·검색 UI를 주입. 옵션 프리셋 사용 시 로그인된 세션으로 게임 옵션 페이지를 읽고 옵션을 저장함. |
 | host: `https://maimaidx-eng.com/maimai-mobile/*` | 국제판. 위와 동일. |
-| host: `https://maimai.team-carol.com/*` | 곡명·별명 번역 데이터 조회(읽기 전용). |
+| host: `https://maimai.team-carol.com/*` | 곡명·별명 번역 데이터 조회(읽기 전용). 옵션 프리셋을 켠 경우 프리셋 저장·조회와 옵션 스냅샷 전송. |
 
 원격 코드 실행 없음 — 모든 스크립트는 번들에 포함.
 
@@ -53,6 +61,12 @@ UI 번역 사전은 확장에 포함돼 있습니다.
 **수집·전송하는 사용자 데이터**
 
 - 곡명·별명 조회를 위해 공개 API에 GET 요청. 사용자 데이터는 전송하지 않음.
+- 게임 옵션 프리셋을 **사용자가 직접 켠 경우에 한해**:
+  - 웹사이트 콘텐츠 — maimai DX NET 게임 옵션 값과 옵션 페이지 HTML
+  - 인증 정보 — carol 토큰(사용자가 붙여넣어 등록, 로컬에만 저장, 대상 서버 식별용)
+  - 전송 대상: `https://maimai.team-carol.com` (carol 서버)
+  - 개인정보처리방침: https://maimai.team-carol.com/privacy
+  - SEGA 로그인 비밀번호는 요청·전송하지 않음
 
 **데이터 사용 관련 확인란**
 
@@ -64,8 +78,10 @@ UI 번역 사전은 확장에 포함돼 있습니다.
 
 - 설정 토글: `chrome.storage.sync` (기기 간 동기화)
 - 곡 데이터 캐시: `chrome.storage.local`
+- carol 토큰: `chrome.storage.local` (해당 기기에만, 평문)
 - 스코어/스냅샷: `chrome.storage.local`
 
 ## 관련 문서
 
+- 옵션 프리셋 상세: [option-preset.md](option-preset.md)
 - 배포 절차: [deploy.md](deploy.md)

@@ -23,6 +23,13 @@ maimaiDX NET을 한국어로 보고, 곡을 별명으로 찾는 크롬 확장.
 
 곡명·별명 데이터는 [team-carol/carol](https://github.com/team-carol/carol)의 API에서 받아옵니다.
 
+**게임 옵션 프리셋** (선택, 기본 꺼짐) — [carol](https://github.com/team-carol/carol)
+봇의 옵션 프리셋 북마클릿을 익스텐션 안으로 옮긴 것입니다. 게임 옵션을 이름 붙여
+캐롤봇에 저장해 두고, maimai DX NET 화면의 버튼으로 한 번에 적용합니다.
+팝업에서 켜고 디스코드 `/북마클릿`으로 받은 링크를 붙여넣어 토큰을 등록해야 동작합니다.
+게임 옵션 값과 옵션 페이지 HTML이 carol 서버로 전송됩니다. 자세한 내용은
+[docs/option-preset.md](docs/option-preset.md).
+
 ## 개발
 
 Node 22+ / pnpm 9 필요.
