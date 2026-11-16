@@ -6,14 +6,14 @@
 ## 기본 정보
 
 - **이름**: 캐롤익스텐션
-- **요약 (한 줄)**: maimai DX NET 한국어 번역 · 곡 검색 · carol 프로필 동기화 (비공식)
+- **요약 (한 줄)**: maimai DX NET 한국어 번역 · 곡 검색 · 게임 옵션 프리셋 (비공식)
 - **카테고리**: 도구 (Tools)
 - **언어**: 한국어
 
 ## 단일 목적 (Single purpose)
 
 > 사용자가 직접 연 maimai DX NET 페이지에 한국어 번역과 곡 검색을 입혀 열람을 돕고,
-> 사용자가 원하면 프로필 데이터를 carol(디스코드 봇)로 동기화하는 버튼을 제공합니다.
+> 사용자가 원하면 게임 옵션을 carol(디스코드 봇)에 프리셋으로 저장·적용하는 버튼을 제공합니다.
 
 ## 자세한 설명
 
@@ -34,45 +34,36 @@
 곡 목록 페이지에 검색창을 넣습니다. 별명, 한국어 제목, 원제로 찾을 수 있고
 공백은 무시합니다. 추가 네트워크 요청 없이 화면에 이미 그려진 곡만 거릅니다.
 
-■ carol 프로필 동기화 (선택, 기본 꺼짐)
-디스코드 봇 carol(github.com/team-carol/carol)의 프로필 동기화 기능을
-확장 버튼으로 제공합니다. 팝업에서 모드(수동/자동)를 켜고 carol에서 발급한
-동기화 토큰을 등록해야만 동작합니다.
- - 수동: maimai DX NET 화면의 버튼을 눌렀을 때만 동기화
- - 자동: 홈 화면에 접속했고 플레이 횟수가 지난 동기화 이후 바뀐 것이
-   확인됐을 때만 동기화 (백그라운드 상시 수집 없음)
-동기화 시 프로필·플레이 기록 페이지의 HTML과 동기화 토큰이
-https://maimai.team-carol.com 으로 전송됩니다. SEGA 로그인 비밀번호를
-요청하거나 전송하지 않습니다.
+■ 게임 옵션 프리셋 (선택, 기본 꺼짐)
+디스코드 봇 carol(github.com/team-carol/carol)의 옵션 프리셋 기능을 확장 버튼으로
+제공합니다. 게임 옵션을 이름 붙여 저장해 두고 한 번에 적용합니다. 팝업에서 켜고
+carol에서 발급한 토큰을 등록해야만 동작하며, 버튼을 눌렀을 때만 게임 옵션 값과
+옵션 페이지 HTML이 https://maimai.team-carol.com 으로 전송됩니다.
+SEGA 로그인 비밀번호를 요청하거나 전송하지 않습니다.
 
-곡명·별명 데이터는 같은 서버의 공개 API에서 받아옵니다. UI 번역 사전은
-확장에 포함돼 있습니다. carol 동기화를 켜지 않으면 프로필·플레이 기록 HTML을
-carol 서버로 전송하지 않습니다.
+곡명·별명 데이터는 carol(maimai.team-carol.com)의 공개 API에서 받아옵니다.
+UI 번역 사전은 확장에 포함돼 있습니다.
 ```
 
 ## 권한 사용 사유 (Permission justifications)
 
 | 권한 | 사유 |
 |---|---|
-| `storage` | 기능 토글, carol 동기화 토큰, 마지막 동기화 상태를 로컬에 저장. |
-| host: `https://maimaidx.jp/maimai-mobile/*` | 일본판 maimai DX NET 페이지에 번역·검색 UI를 주입. carol 동기화 시 로그인된 세션으로 해당 도메인의 프로필·기록 페이지를 읽음. |
+| `storage` | 기능 토글, 곡 데이터 캐시, carol 토큰을 로컬에 저장. |
+| host: `https://maimaidx.jp/maimai-mobile/*` | 일본판 maimai DX NET 페이지에 번역·검색 UI를 주입. 옵션 프리셋 사용 시 로그인된 세션으로 게임 옵션 페이지를 읽고 옵션을 저장함. |
 | host: `https://maimaidx-eng.com/maimai-mobile/*` | 국제판. 위와 동일. |
-| host: `https://maimai.team-carol.com/*` | 곡명·별명 번역 데이터 조회(읽기 전용). carol 동기화를 켠 경우, 수집한 HTML을 이 도메인의 carol `/sync` 엔드포인트로 전송. |
+| host: `https://maimai.team-carol.com/*` | 곡명·별명 번역 데이터 조회(읽기 전용). 옵션 프리셋을 켠 경우 프리셋 저장·조회와 옵션 스냅샷 전송. |
 
-원격 코드 실행 없음 — 모든 스크립트는 번들에 포함. carol 동기화 로직도
-원격 `bookmarklet.js`를 주입하지 않고 확장 안에 재구현했습니다.
+원격 코드 실행 없음 — 모든 스크립트는 번들에 포함.
 
 ## 개인정보 보호 관행 탭
 
 **수집·전송하는 사용자 데이터**
 
-- 기본(번역·검색): 곡명·별명 조회를 위해 공개 API에 GET 요청. maimai DX NET의
-  프로필·플레이 기록 HTML과 carol 동기화 토큰은 전송하지 않음.
-- carol 동기화를 **사용자가 직접 켠 경우에 한해**:
-  - 웹사이트 콘텐츠 — maimai DX NET의 프로필/플레이 기록/클리어 차트/지역
-    페이지 HTML, 프로필 아바타 이미지
-  - 인증 정보 — carol 동기화 토큰(사용자가 붙여넣어 등록, 로컬에만 저장,
-    전송 시 대상 서버 식별용으로만 사용)
+- 곡명·별명 조회를 위해 공개 API에 GET 요청. 사용자 데이터는 전송하지 않음.
+- 게임 옵션 프리셋을 **사용자가 직접 켠 경우에 한해**:
+  - 웹사이트 콘텐츠 — maimai DX NET 게임 옵션 값과 옵션 페이지 HTML
+  - 인증 정보 — carol 토큰(사용자가 붙여넣어 등록, 로컬에만 저장, 대상 서버 식별용)
   - 전송 대상: `https://maimai.team-carol.com` (carol 서버)
   - 개인정보처리방침: https://maimai.team-carol.com/privacy
   - SEGA 로그인 비밀번호는 요청·전송하지 않음
@@ -86,10 +77,11 @@ carol 서버로 전송하지 않습니다.
 **저장**
 
 - 설정 토글: `chrome.storage.sync` (기기 간 동기화)
-- 동기화 토큰·상태: `chrome.storage.local` (해당 기기에만, 평문)
+- 곡 데이터 캐시: `chrome.storage.local`
+- carol 토큰: `chrome.storage.local` (해당 기기에만, 평문)
 - 스코어/스냅샷: `chrome.storage.local`
 
 ## 관련 문서
 
-- 동기화 상세: [carol-sync.md](carol-sync.md)
+- 옵션 프리셋 상세: [option-preset.md](option-preset.md)
 - 배포 절차: [deploy.md](deploy.md)

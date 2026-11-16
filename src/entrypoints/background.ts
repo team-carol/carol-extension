@@ -85,7 +85,17 @@ function toAliases(rows: AliasRow[]): AliasMap {
   return map
 }
 
+/** 없어진 carol 프로필 동기화 기능이 남긴 키. 업데이트 시 정리. */
+const LEGACY_LOCAL_KEYS = ['carolSyncState', 'carolRankImagesSent']
+const LEGACY_SYNC_KEYS = ['carolSync']
+
 export default defineBackground(() => {
+  browser.runtime.onInstalled.addListener(({ reason }) => {
+    if (reason !== 'update') return
+    void browser.storage.local.remove(LEGACY_LOCAL_KEYS).catch(() => {})
+    void browser.storage.sync.remove(LEGACY_SYNC_KEYS).catch(() => {})
+  })
+
   browser.runtime.onMessage.addListener(async (msg: unknown) => {
     const type = (msg as { type?: string } | null)?.type
     if (type === GET_SONG_TRANSLATIONS) return toTranslations(await getRows())

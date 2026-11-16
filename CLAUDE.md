@@ -14,6 +14,9 @@ maimai NET(세가 maimai DX 공식 스코어 열람 사이트)에 한국어 번�
 - **WXT** (Vite 기반 MV3 프레임워크) + TypeScript
 - UI는 **Preact** (번들 크기 때문에 React 대신)
 - 스타일은 CSS Modules 또는 plain CSS. 주입되는 스타일은 전부 `.mmp-` 프리픽스로 네임스페이스 분리 (원본 사이트 CSS와 충돌 방지)
+- 색·글꼴·반경·간격·모션은 **`@team-carol/design-system` 토큰(`var(--crl-*)`)만** 사용. 색 직접 기입 금지
+  - 팝업: `tokens.css` import (`:root`)
+  - maimai NET 주입 UI: `core/theme.ts`의 `injectTokens()` + 루트 요소에 `CRL_SCOPE` 클래스 (`:root` 오염 금지)
 - 패키지 매니저: pnpm
 
 ```bash
@@ -147,22 +150,18 @@ maimai NET은 동시 요청 / 다중 탭에 매우 취약함. 병렬 `fetch`를 
 - 설정: `chrome.storage.sync` (기기 간 동기화)
 - 스냅샷은 날짜별 키로 분리 저장. 통짜 객체 하나에 몰아넣으면 쓰기마다 전체 직렬화라 느려짐
 - 외부 서버로 데이터 전송 금지. 전부 로컬.
-  - **예외: carol 프로필 동기화** (`features/carolButton.ts` + `carolAuto.ts` + `carolSync.ts`).
-    team-carol/carol(디스코드 봇)의 북마클릿을 익스텐션 안으로 옮긴 것. 사용자가 팝업에서
-    명시적으로 모드를 켜고(기본 `off`, `manual`/`auto` 선택) 토큰을 등록해야만 동작함.
-    `manual`은 버튼 클릭 시에만, `auto`는 **홈 진입 시 플레이 카운트가 바뀌었을 때** 1회
-    (`playerData` 1요청으로 확인, 10분 스로틀, 백그라운드 타이머 없음) maimai NET HTML을
-    carol 서버(`maimai.team-carol.com`)로 전송함. 토큰·상태는 `storage.local`에만 저장.
-    carol 서버 URL은 곡 별명 API와 같은 오리진이라 `host_permissions` 추가 없음.
-    `docs/carol-sync.md` 참고.
+  - **예외: carol 게임 옵션 프리셋** (`features/optionPreset.ts`).
+    carol의 옵션 프리셋 북마클릿(`/option.js`)을 번들로 다시 구현한 것. 팝업에서 켜고(기본 off)
+    토큰을 등록해야 동작. 사용자가 패널을 열거나 버튼을 눌렀을 때만 옵션 값·옵션 페이지 HTML을
+    carol 서버(`maimai.team-carol.com`)로 보냄. 토큰은 `storage.local`에만. `docs/option-preset.md` 참고.
+  - carol 프로필 동기화는 원본 북마클릿을 그대로 실행할 수 없어 **제거함**. 다시 넣지 말 것.
 
 ## 경계
 
 - 세가 ToS상 회색지대임. **사용자가 직접 연 페이지를 보조**하는 선을 지킬 것
 - 자동 로그인, 백그라운드 크롤링, 계정 정보 수집, 자동 외부 전송 전부 금지
-  - carol 프로필 동기화만 예외 — 옵트인 + 버튼 클릭 시에만 전송. "데이터 저장" 절 참고
+  - carol 옵션 프리셋만 예외 — 옵트인 + 사용자 조작 시에만 전송. "데이터 저장" 절 참고
 - 웹스토어 심사 대비: 권한 최소화, 원격 코드 실행 없음, 프라이버시 정책 명시
-  - carol 동기화는 원격 `/bookmarklet.js`를 주입하지 않고 수집 로직을 번들에 포함해 이 원칙을 지킴
 
 ## 번역 톤
 
