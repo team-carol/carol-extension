@@ -1,6 +1,7 @@
 /*
  * 팝업 스타일. 색·글꼴·반경·간격·모션은 전부 team carol 디자인 시스템 토큰(var(--crl-*)).
- * 토큰은 main.tsx 에서 @team-carol/design-system/tokens.css 로 들어옴 (다크 전용).
+ * 토큰·컴포넌트(crl-btn·crl-input·crl-tag)는 main.tsx 에서 components.css 로 들어옴 (다크 전용).
+ * 여기에는 디자인 시스템에 없는 팝업 전용 레이아웃·스위치만 둔다.
  * 색을 직접 박지 말 것. 토큰이 맞지 않으면 디자인 시스템 저장소에서 고친다.
  */
 
@@ -211,11 +212,8 @@ body {
   margin-bottom: var(--crl-space-3);
 }
 
-.mmp-preset-mask {
+.mmp-spacer {
   flex: 1;
-  min-width: 0;
-  font-size: 11px;
-  color: var(--crl-success);
 }
 
 .mmp-preset-in {
@@ -223,70 +221,27 @@ body {
   gap: var(--crl-space-3);
 }
 
-.mmp-preset-in input {
+.mmp-preset-in .crl-input {
   flex: 1;
   min-width: 0;
   padding: 7px 10px;
-  border: 1px solid var(--crl-border-strong);
-  border-radius: var(--crl-radius-small);
-  background: var(--crl-canvas-alt);
-  color: var(--crl-ink);
-  font: inherit;
-  font-size: 11px;
-  outline: none;
-  transition: border-color var(--crl-motion-fast) var(--crl-motion-easing);
+  font-family: inherit;
+  font-size: 12px;
 }
 
-.mmp-preset-in input::placeholder {
-  color: var(--crl-faint);
+/* 디자인 시스템엔 위험 버튼이 없어 carol 웹(theme.ts)과 같은 hover 만 덧붙임 */
+.mmp-btn-danger:hover:not(:disabled) {
+  color: var(--crl-danger);
+  box-shadow: 0 0 0 1px var(--crl-danger-border);
 }
 
-.mmp-preset-in input:focus-visible {
-  border-color: var(--crl-accent);
-}
-
-/* 버튼 — 디자인 시스템 secondary / primary */
-
-.mmp-btn {
-  flex: none;
-  padding: 7px 12px;
-  border: 0;
-  border-radius: var(--crl-radius-small);
-  background: var(--crl-surface-2);
-  box-shadow: 0 0 0 1px var(--crl-border-strong);
-  color: var(--crl-ink-2);
-  font: inherit;
-  font-size: 11px;
-  font-weight: var(--crl-weight-semibold);
-  cursor: pointer;
-  transition: background var(--crl-motion-fast) var(--crl-motion-easing);
-}
-
-.mmp-btn:hover:not(:disabled) {
-  background: var(--crl-surface-hover);
-}
-
-.mmp-btn:focus-visible {
+.crl-btn:focus-visible {
   outline: 2px solid var(--crl-focus);
   outline-offset: 2px;
 }
 
-.mmp-btn:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-
-.mmp-btn--primary {
-  background: var(--crl-accent);
-  box-shadow: none;
-  color: var(--crl-accent-ink);
-}
-
-.mmp-btn--primary:hover:not(:disabled) {
-  background: var(--crl-accent-hover);
-}
-
-.mmp-btn--danger:hover:not(:disabled) {
-  color: var(--crl-danger);
-  box-shadow: 0 0 0 1px var(--crl-danger-border);
+/* 팝업 폭(304px)에선 crl-btn--sm(14px)도 커서 입력창 높이에 맞춰 한 단계 줄임 */
+.mmp-preset-body .crl-btn {
+  padding: 7px 12px;
+  font-size: 12px;
 }

@@ -118,8 +118,13 @@ function PresetSection() {
 
           {token ? (
             <div class="mmp-preset-tok">
-              <span class="mmp-preset-mask">토큰 등록됨 · ••••{token.slice(-4)}</span>
-              <button type="button" class="mmp-btn mmp-btn--danger" onClick={clear}>
+              <span class="crl-tag crl-tag--success">토큰 등록됨 · ••••{token.slice(-4)}</span>
+              <span class="mmp-spacer" />
+              <button
+                type="button"
+                class="crl-btn crl-btn--sm crl-btn--secondary mmp-btn-danger"
+                onClick={clear}
+              >
                 삭제
               </button>
             </div>
@@ -132,6 +137,8 @@ function PresetSection() {
           <div class="mmp-preset-in">
             <input
               type="text"
+              class="crl-input"
+              aria-label="carol 토큰 또는 링크"
               placeholder="https://maimai.team-carol.com/sync?code=…"
               value={draft}
               onInput={(e) => setDraft((e.target as HTMLInputElement).value)}
@@ -141,7 +148,7 @@ function PresetSection() {
             />
             <button
               type="button"
-              class="mmp-btn mmp-btn--primary"
+              class="crl-btn crl-btn--sm crl-btn--primary"
               disabled={!draft.trim()}
               onClick={save}
             >
