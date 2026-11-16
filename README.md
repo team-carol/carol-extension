@@ -30,6 +30,22 @@ maimaiDX NET을 한국어로 보고, 곡을 별명으로 찾는 크롬 확장.
 게임 옵션 값과 옵션 페이지 HTML이 carol 서버로 전송됩니다. 자세한 내용은
 [docs/option-preset.md](docs/option-preset.md).
 
+## 스크린샷
+
+v0.1.1 실제 화면입니다. 개인 정보(플레이어 이름·점수 등)가 보이는 부분은 잘라냈습니다.
+
+| 팝업 | 팝업 (옵션 프리셋 켬) |
+|---|---|
+| <img src="docs/screenshots/popup-default.png" width="280" alt="팝업 기본 화면"> | <img src="docs/screenshots/popup-preset.png" width="280" alt="옵션 프리셋을 켜고 토큰을 등록한 팝업"> |
+
+**곡 검색 · UI 번역** — 곡 목록에 검색창이 들어가고, 장르 이름이 한국어로 표시됩니다.
+
+<img src="docs/screenshots/song-search.png" width="444" alt="곡 목록에서 pandora 를 검색한 화면">
+
+**게임 옵션 프리셋** — maimai DX NET 우하단 `옵션 프리셋` 버튼을 누르면 열리는 패널입니다.
+
+<img src="docs/screenshots/preset-panel.png" width="420" alt="옵션 프리셋 패널">
+
 ## 개발
 
 Node 22+ / pnpm 9 필요.
