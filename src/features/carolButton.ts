@@ -8,7 +8,7 @@
  * `init()` / `destroy()` 인터페이스 — 팝업 토글로 켜고 끌 때 리스너/DOM 누수 없이 정리.
  */
 import { carolSyncState, carolToken } from '@/core/storage'
-import { isCarolSyncRunning, runCarolSync } from '@/features/carolSync'
+import { abortCarolSync, isCarolSyncRunning, runCarolSync } from '@/features/carolSync'
 
 const BTN_ID = 'mmp-carol-btn'
 const STYLE_ID = 'mmp-carol-btn-style'
@@ -117,6 +117,7 @@ export function initCarolSync(): void {
 }
 
 export function destroyCarolSync(): void {
+  abortCarolSync()
   if (onStorage) {
     browser.storage.onChanged.removeListener(onStorage)
     onStorage = null

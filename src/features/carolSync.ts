@@ -1,23 +1,22 @@
 /**
  * carol bot 프로필 동기화.
  *
- * team-carol/carol 의 북마클릿(`src/web/bookmarklet.ts` 의 `bookmarkletJs`)이 하던 일을
- * 익스텐션 안으로 옮긴 것. 원본은 원격 스크립트(`/bookmarklet.js?code=…`)를 페이지에
- * 주입하는 방식이라 웹스토어 심사(원격 코드 실행 금지)에 걸림. 여기서는 콘텐츠 스크립트
- * (격리 월드)에서 직접 수집·전송한다.
+ * team-carol/carol 의 "캐롤봇 추가 북마클릿"(`src/web/bookmarklet.ts` 의 `bookmarkletJs`)이
+ * 하던 일을 익스텐션 안으로 옮긴 것. 원본은 원격 스크립트(`/bookmarklet.js?code=…`)를
+ * 주입하는 방식이라 웹스토어 정책(원격 코드 실행 금지)에 걸림 → 수집 로직을 번들에 포함.
  *
- * 수집 대상 페이지 목록과 POST 페이로드 키(`server,h,p,r,f,a,js,dt,tb4..tb0,rt,m,em`)는
- * carol `/sync` 엔드포인트와 **바이트 단위로 같아야** 함. carol 스크래퍼가 페이지를
- * 늘리거나 키를 바꾸면 여기도 맞출 것.
+ * 프로필·레이팅·전체 기록은 carol 이 maishift 에서 받는다. 이 동기화는 maishift 에 없는 것만
+ * 보낸다: 친구 코드, 최근 플레이, 지방, 게임 설정, 서클, 단위·클래스 이미지.
  *
- * 원본 북마클릿의 프리셋/추가 북마클릿(maishift 등)은 옮기지 않았다 —
- * 그건 서버가 끼워 넣는 코드라 여기서 재현하려면 원격 코드 실행이 됨.
- * carol 코어 동기화만 담당한다.
+ * 수집 페이지와 POST 페이로드 키(`server,r,f,dt,m,em,uo,ci,cm,cr,ri`)는 carol `/sync` 와
+ * **같아야** 함. carol 이 바꾸면 여기도 맞출 것 (`docs/carol-sync.md`).
  *
- * 동시성 1 · 요청 간 800ms. maimai NET은 병렬 요청에 세션이 날아감(CLAUDE.md 참고).
+ * 원본과 다른 점: 원본은 페이지를 3개씩 병렬로 받지만 여기선 `FetchQueue`(동시성 1, 700ms)로
+ * 순차 수집한다 — CLAUDE.md "세션 취급". 에러 페이지면 재시도하지 않고 즉시 중단.
  */
 import { region } from '@/core/selectors'
-import { carolSyncState } from '@/core/storage'
+import { carolRankImagesSent, carolSyncState } from '@/core/storage'
+import { FetchQueue, QueueAbortedError, sleep } from '@/core/fetchQueue'
 
 const CAROL_ORIGIN = 'https://maimai.team-carol.com'
 
@@ -25,76 +24,70 @@ const OV_ID = 'mmp-carol-ov'
 const STYLE_ID = 'mmp-carol-style'
 
 const MAX_ATTEMPTS = 3
-const REQUEST_TIMEOUT = 15_000
-const GAP_MS = 800
+const SYNC_UPLOAD_TIMEOUT = 60_000
+/** 원본 북마클릿과 같음: 단위·클래스 이미지는 한 번에 최대 4개 */
+const MAX_RANK_IMAGES = 4
 
 type Region = 'jp' | 'intl'
 
 /** carol `/sync` 페이로드. 키 이름을 바꾸지 말 것. */
 interface SyncPayload {
   server: Region
-  h: string
-  p: string
   r: string
   f: string
-  a: string
-  js: unknown[]
   dt: Array<{ idx: string; html: string }>
-  tb4: string
-  tb3: string
-  tb2: string
-  tb1: string
-  tb0: string
-  rt: string
   m: string
   em: string
+  uo: string
+  ci: string
+  cm: string
+  cr: string
+  ri: Array<{ url: string; data: string }>
 }
 
+type PageKey = 'r' | 'f' | 'm' | 'em' | 'uo' | 'ci' | 'cm' | 'cr'
+
 interface CorePage {
-  /** 페이로드 키 */
-  key: keyof SyncPayload
-  /** UI 행 id */
+  key: PageKey
+  /** UI 행 id (원본 북마클릿과 같은 id) */
   row: string
   path: string
-  /** 없어도 전송은 진행 (실패해도 스킵) */
+  /** 실패해도 전송은 진행 */
   optional: boolean
 }
 
-/** 수집 순서 = 배열 순서. 원본 `collectCore`의 `_pl`과 동일. */
-const CORE_PAGES: CorePage[] = [
-  { key: 'h', row: 'hm', path: '/maimai-mobile/home/', optional: false },
-  { key: 'p', row: 'pd', path: '/maimai-mobile/playerData/', optional: false },
+/** 수집 순서 = 원본 `collectCore`의 `_pl` 순서. */
+const PAGES: CorePage[] = [
   { key: 'r', row: 'rc', path: '/maimai-mobile/record/', optional: false },
   { key: 'f', row: 'fc', path: '/maimai-mobile/friend/userFriendCode/', optional: false },
-  { key: 'tb4', row: 'tb4', path: '/maimai-mobile/record/musicGenre/search/?genre=99&diff=4', optional: true },
-  { key: 'tb3', row: 'tb3', path: '/maimai-mobile/record/musicGenre/search/?genre=99&diff=3', optional: true },
-  { key: 'tb2', row: 'tb2', path: '/maimai-mobile/record/musicGenre/search/?genre=99&diff=2', optional: true },
-  { key: 'tb1', row: 'tb1', path: '/maimai-mobile/record/musicGenre/search/?genre=99&diff=1', optional: true },
-  { key: 'tb0', row: 'tb0', path: '/maimai-mobile/record/musicGenre/search/?genre=99&diff=0', optional: true },
-]
-
-/** intl 전용. jp는 클리어 차트에서 레이팅을 산출함. */
-const RATING_TARGET: CorePage = {
-  key: 'rt',
-  row: 'rt',
-  path: '/maimai-mobile/home/ratingTargetMusic/',
-  optional: true,
-}
-
-const AREA_PAGES: CorePage[] = [
   { key: 'm', row: 'mp', path: '/maimai-mobile/map/', optional: true },
   { key: 'em', row: 'em', path: '/maimai-mobile/map/eventMap/', optional: true },
+  { key: 'uo', row: 'uo', path: '/maimai-mobile/home/userOption/updateUserOption/', optional: true },
+  { key: 'ci', row: 'ci', path: '/maimai-mobile/circle/', optional: true },
+  { key: 'cm', row: 'cm', path: '/maimai-mobile/circle/circleMember/', optional: true },
+  { key: 'cr', row: 'cr', path: '/maimai-mobile/circle/circleRanking/', optional: true },
 ]
 
+const HOME_PATH = '/maimai-mobile/home/'
+const RANK_IMG_RX = /src="(https:[^"]*\/img\/(?:course\/course_rank_|class\/class_rank_s_)[^"]*[.]png)"/g
+
 let running = false
+let activeQueue: FetchQueue | null = null
 
 export function isCarolSyncRunning(): boolean {
   return running
 }
 
+/** 진행 중인 동기화 중단 (오버레이 ✕ / destroy 시). */
+export function abortCarolSync(): void {
+  activeQueue?.abort('user')
+}
+
 interface RunOpts {
-  /** 자동 모드에서 트리거된 실행 — 오버레이 헤더에 표시만 다름 */
+  /** 자동 모드에서 트리거된 실행 — 오버레이 헤더 표시만 다름 */
   auto?: boolean
+  /** 자동 모드가 방금 확인한 플레이 카운트. 성공 시 다음 비교 기준으로 저장 */
+  playCount?: number
 }
 
 /**
@@ -103,8 +96,8 @@ interface RunOpts {
  */
 export async function runCarolSync(token: string, opts: RunOpts = {}): Promise<void> {
   if (running) return
-  const region = detectRegion()
-  if (!region) {
+  const server = detectRegion()
+  if (!server) {
     if (!opts.auto) alert('maimai DX NET 페이지에서 실행해주세요.')
     return
   }
@@ -114,99 +107,94 @@ export async function runCarolSync(token: string, opts: RunOpts = {}): Promise<v
   }
 
   running = true
-  const ui = openOverlay(region, opts.auto ?? false)
+  const queue = new FetchQueue()
+  activeQueue = queue
+  const ui = openOverlay(server, opts.auto ?? false, () => queue.abort('user'))
   try {
     ui.section('PROFILE')
-    ui.row('hm', '홈 데이터')
-    ui.row('pd', '플레이어 데이터')
     ui.row('rc', '최근 플레이')
     ui.row('fc', '친구코드')
-    ui.section('CLEAR CHART')
-    ui.row('tb4', 'Re:MASTER')
-    ui.row('tb3', 'MASTER')
-    ui.row('tb2', 'EXPERT')
-    ui.row('tb1', 'ADVANCED')
-    ui.row('tb0', 'BASIC')
-    ui.section('RATING')
-    ui.row('rt', '레이팅 대상 50곡')
+    ui.row('ri', '단위·클래스 이미지')
     ui.section('AREA')
     ui.row('mp', '지역 진행도')
     ui.row('em', '이벤트 지역')
-    ui.section('PLAY DETAIL')
-    ui.row('dt', '플레이 기록 상세')
-    ui.section('ASSETS')
-    ui.row('av', '아바타')
+    ui.section('OPTION')
+    ui.row('uo', '게임 설정')
+    ui.section('CIRCLE')
+    ui.row('ci', '서클 정보')
+    ui.row('cm', '서클 멤버')
+    ui.row('cr', '서클 랭킹')
     ui.section('SERVER')
     ui.row('sv', '서버 저장')
 
-    const pages: CorePage[] = [
-      ...CORE_PAGES,
-      ...(region === 'intl' ? [RATING_TARGET] : []),
-      ...AREA_PAGES,
-    ]
-
-    const collected: Partial<Record<keyof SyncPayload, string>> = {}
-    for (const [i, page] of pages.entries()) {
-      const text = await fetchPage(page, ui)
-      collected[page.key] = text
-      if (i < pages.length - 1) await sleep(GAP_MS)
+    const got: Partial<Record<PageKey, string>> = {}
+    for (const page of PAGES) {
+      got[page.key] = await fetchPage(queue, page, ui)
     }
 
-    if (region === 'jp') ui.ok('rt', '클리어 차트에서 산출')
-
-    if (!validateCore(collected, ui)) {
-      ui.finish('error', 'maimai NET 로그인 상태를 확인해주세요')
+    const missing = PAGES.filter((p) => !p.optional && !got[p.key])
+    if (missing.length) {
+      for (const p of missing) ui.fail(p.row, '수집 실패')
+      ui.skip('sv', '수집 실패')
+      ui.finish('error', '일부 항목 실패')
+      return
+    }
+    if (!validateCore(got, ui)) {
+      ui.skip('sv', '수집 실패')
+      ui.finish('error', '일부 항목 실패')
       return
     }
 
-    const record = collected.r ?? ''
-    let details: SyncPayload['dt'] = []
-    try {
-      details = await collectDetails(record, ui)
-    } catch (err) {
-      console.warn('[mmp] carol: 기록 상세 수집 실패', err)
-      ui.skip('dt', '실패')
-    }
-
-    const avatar = await collectAvatar(collected.h ?? '', ui)
+    // 원본도 플레이 상세(dt) 수집은 꺼져 있음(COLLECT_PLAY_DETAILS=false) — 빈 배열 전송
+    const ri = await collectRankImages(queue, server, ui)
 
     const payload: SyncPayload = {
-      server: region,
-      h: collected.h ?? '',
-      p: collected.p ?? '',
-      r: record,
-      f: collected.f ?? '',
-      a: avatar,
-      js: [],
-      dt: details,
-      tb4: collected.tb4 ?? '',
-      tb3: collected.tb3 ?? '',
-      tb2: collected.tb2 ?? '',
-      tb1: collected.tb1 ?? '',
-      tb0: collected.tb0 ?? '',
-      rt: collected.rt ?? '',
-      m: collected.m ?? '',
-      em: collected.em ?? '',
+      server,
+      r: got.r ?? '',
+      f: got.f ?? '',
+      dt: [],
+      m: got.m ?? '',
+      em: got.em ?? '',
+      uo: got.uo ?? '',
+      ci: got.ci ?? '',
+      cm: got.cm ?? '',
+      cr: got.cr ?? '',
+      ri,
     }
 
+    ui.phase('동기화 저장 중...')
     const result = await postSync(token, payload, ui)
     if (result !== 'fail') {
-      // 자동 모드가 다음에 "카운트 바뀌었나" 판단할 기준점
       await carolSyncState.patch({
         syncedAt: Date.now(),
         checkedAt: Date.now(),
-        playCount: parsePlayCount(collected.p ?? '') ?? undefined,
+        ...(opts.playCount != null ? { playCount: opts.playCount } : {}),
       })
+      if (ri.length) await carolRankImagesSent.add(server, ri.map((x) => fileName(x.url)))
     }
-    if (result === 'no_change') ui.finish('muted', '이미 최신 상태')
-    else if (result === 'initialized') ui.finish('muted', '첫 동기화 기준선 설정 완료')
-    else if (result === 'ok') ui.finish('ok', '동기화 완료')
-    else ui.finish('error', '서버 저장 실패')
+
+    if (result === 'no_change' && !ui.hadError()) {
+      ui.phase('')
+      ui.finish('muted', '이미 최신 상태')
+    } else if (result === 'initialized' && !ui.hadError()) {
+      ui.phase('첫 동기화는 기준선으로 저장 · 이후부터 플레이 기록 수집')
+      ui.finish('init', '첫 동기화 기준선 설정 완료 · 다음부터 플레이 기록 수집')
+    } else if (result === 'ok' && !ui.hadError()) {
+      ui.phase('동기화 저장 완료')
+      ui.finish('ok', '동기화 완료')
+    } else {
+      ui.finish('error', '일부 항목 실패')
+    }
   } catch (err) {
-    console.error('[mmp] carol 동기화 오류', err)
-    ui.finish('error', '오류: ' + errText(err))
+    if (err instanceof QueueAbortedError) {
+      if (err.reason !== 'user') ui.finish('error', err.message)
+    } else {
+      console.error('[mmp] carol 동기화 오류', err)
+      ui.finish('error', '오류: ' + errText(err))
+    }
   } finally {
     running = false
+    if (activeQueue === queue) activeQueue = null
   }
 }
 
@@ -245,19 +233,9 @@ export function parsePlayCount(html: string): number | null {
   return null
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((res) => setTimeout(res, ms))
-}
-
 function errText(err: unknown): string {
   if (err instanceof Error) return err.name === 'AbortError' ? '시간 초과' : err.message
   return String(err)
-}
-
-function fetchWithTimeout(url: string, opt?: RequestInit): Promise<Response> {
-  const ac = new AbortController()
-  const timer = setTimeout(() => ac.abort(), REQUEST_TIMEOUT)
-  return fetch(url, { ...opt, signal: ac.signal }).finally(() => clearTimeout(timer))
 }
 
 function sizeLabel(len: number): string {
@@ -265,27 +243,34 @@ function sizeLabel(len: number): string {
   return len > 1024 ? `${(len / 1024).toFixed(1)}KB` : `${len}B`
 }
 
-/** 한 페이지를 재시도까지 포함해 가져옴. 실패 시 optional이면 '' 반환. */
-async function fetchPage(page: CorePage, ui: Overlay): Promise<string> {
+function fileName(url: string): string {
+  return url.split('/').pop() ?? url
+}
+
+/**
+ * 한 페이지를 큐로 받음. 네트워크 오류만 재시도(최대 3회).
+ * 에러/점검 페이지는 큐가 중단시키므로 `QueueAbortedError`가 그대로 위로 올라감.
+ */
+async function fetchPage(queue: FetchQueue, page: CorePage, ui: Overlay): Promise<string> {
+  ui.pending(page.row, '받는 중')
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     try {
-      const res = await fetchWithTimeout(page.path)
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const text = await res.text()
-      ui.ok(page.row, sizeLabel(text.length))
-      return text
+      const res = await queue.fetchText(page.path)
+      if (res.status < 200 || res.status >= 300) throw new Error(`HTTP ${res.status}`)
+      ui.ok(page.row, sizeLabel(res.text.length))
+      return res.text
     } catch (err) {
+      if (err instanceof QueueAbortedError) {
+        ui.fail(page.row, err.reason === 'user' ? '중단' : '에러 페이지')
+        throw err
+      }
       if (attempt < MAX_ATTEMPTS) {
-        ui.pending(page.row, `재시도 ${attempt + 1}/${MAX_ATTEMPTS}`)
+        ui.pending(page.row, `재시도 ${attempt}/${MAX_ATTEMPTS - 1}`)
         await sleep(400 * attempt)
         continue
       }
-      if (page.optional) {
-        ui.skip(page.row, '실패')
-        return ''
-      }
-      ui.fail(page.row, errText(err))
-      return ''
+      if (page.optional) ui.skip(page.row, '실패')
+      else ui.fail(page.row, errText(err) === '시간 초과' ? '시간 초과' : '네트워크 오류')
     }
   }
   return ''
@@ -295,153 +280,122 @@ function parseHtml(text: string): Document {
   return new DOMParser().parseFromString(text, 'text/html')
 }
 
-function hasScoreBlocks(text: string): boolean {
-  if (!text) return false
-  return (
-    parseHtml(text).querySelectorAll(
-      "[class*='music_'][class*='_score_back'], .music_name_block",
-    ).length > 0
-  )
+function pageText(doc: Document): string {
+  return doc.body?.textContent ?? ''
 }
 
 /**
- * 로그인/세션 확인. carol `validateCore` 축약판.
+ * 로그인/세션 확인. carol `validateCore` 와 같은 기준 (최근 플레이 · 친구코드).
  * 세션 쿠키가 HttpOnly면 `document.cookie`엔 안 보이므로 DOM 마커로 판정.
  */
-function validateCore(
-  got: Partial<Record<keyof SyncPayload, string>>,
-  ui: Overlay,
-): boolean {
+function validateCore(got: Partial<Record<PageKey, string>>, ui: Overlay): boolean {
+  const label = (document.cookie || '').length > 0 ? '세션 만료' : '로그인 필요'
   try {
-    const home = parseHtml(got.h ?? '')
-    const player = parseHtml(got.p ?? '')
     const record = parseHtml(got.r ?? '')
     const friend = parseHtml(got.f ?? '')
-
     const checks: Record<string, boolean> = {
-      hm: !!(home.querySelector('.name_block') || home.querySelector("img[src*='Icon']")),
-      pd: /プレイ回数|play[^a-z0-9]*count/i.test(player.body?.textContent ?? ''),
       rc: !!(
-        record.querySelector("[class*='playlog'], [class*='record']") ||
-        /playlog|record/i.test(record.body?.textContent ?? '')
+        record.querySelector("[class*='playlog'],[class*='record']") ||
+        /playlog|record/i.test(pageText(record))
       ),
-      fc: /[0-9]{13}/.test((friend.body?.textContent ?? '').replace(/[^0-9]/g, '')),
-      tb3: hasScoreBlocks(got.tb3 ?? ''),
-      tb2: hasScoreBlocks(got.tb2 ?? ''),
+      fc: /[0-9]{13}/.test(pageText(friend).replace(/[^0-9]/g, '')),
     }
-
     const bad = Object.keys(checks).filter((id) => !checks[id])
     if (bad.length) {
-      for (const id of bad) ui.fail(id, '로그인 필요')
+      for (const id of bad) ui.fail(id, label)
       console.warn('[mmp] carol: 세션 검증 실패', bad)
       return false
     }
     return true
   } catch (err) {
+    for (const id of ['rc', 'fc']) ui.fail(id, label)
     console.warn('[mmp] carol: 세션 검증 오류', err)
     return false
   }
 }
 
-/** 최근 기록 중 신기록(newrecord)만 상세 페이지까지 받아옴. carol `collectDetails`. */
-async function collectDetails(recordHtml: string, ui: Overlay): Promise<SyncPayload['dt']> {
-  const doc = parseHtml(recordHtml)
-  const reqs: Array<{ idx: string; url: string }> = []
-  for (const block of Array.from(doc.querySelectorAll('.p_10.t_l.f_0.v_b'))) {
-    if (!block.querySelector('.playlog_achievement_newrecord')) continue
-    const form = block.querySelector("form[action*='playlogDetail']")
-    if (!form) continue
-    const input = form.querySelector<HTMLInputElement>("input[name='idx']")
-    const idx = input?.value.trim() ?? ''
-    const action = form.getAttribute('action') ?? ''
-    if (!idx || !action) continue
-    const sep = action.includes('?') ? '&' : '?'
-    reqs.push({ idx, url: `${action}${sep}idx=${encodeURIComponent(idx)}` })
-  }
-
-  if (reqs.length === 0) {
-    ui.skip('dt', '확인할 기록 없음')
+/**
+ * 홈 HTML의 단위(course_rank_)·클래스(class_rank_s_) 이미지 중 carol 에 아직 안 보낸 것만
+ * data URL 로. 원본은 서버가 "이미 저장된 파일명" 목록을 북마클릿에 끼워 주지만, 익스텐션은
+ * 원격 스크립트를 안 받으므로 이 기기에서 보낸 파일명을 기억해 대신함 (서버도 중복은 거름).
+ */
+async function collectRankImages(
+  queue: FetchQueue,
+  server: Region,
+  ui: Overlay,
+): Promise<SyncPayload['ri']> {
+  try {
+    ui.pending('ri', '확인 중')
+    const known = await carolRankImagesSent.get(server)
+    const home = await queue.fetchText(HOME_PATH)
+    const urls: string[] = []
+    for (const m of home.text.matchAll(RANK_IMG_RX)) {
+      const url = m[1]
+      if (!url) continue
+      if (known.includes(fileName(url)) || urls.includes(url)) continue
+      urls.push(url)
+    }
+    if (!urls.length) {
+      ui.ok('ri', '저장됨')
+      return []
+    }
+    const out: SyncPayload['ri'] = []
+    for (const url of urls.slice(0, MAX_RANK_IMAGES)) {
+      const blob = await queue.fetchBlob(url)
+      out.push({ url, data: await toDataUrl(blob) })
+    }
+    ui.ok('ri', `${out.length}개`)
+    return out
+  } catch (err) {
+    if (err instanceof QueueAbortedError) throw err
+    ui.skip('ri', '건너뜀')
     return []
   }
-  ui.pending('dt', '확인 중')
-
-  const out: SyncPayload['dt'] = []
-  for (const [i, req] of reqs.entries()) {
-    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-      try {
-        const res = await fetchWithTimeout(req.url)
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        out.push({ idx: req.idx, html: await res.text() })
-        break
-      } catch (err) {
-        if (attempt < MAX_ATTEMPTS) await sleep(400 * attempt)
-        else console.warn('[mmp] carol: 상세 실패', req.idx, errText(err))
-      }
-    }
-    if (i < reqs.length - 1) await sleep(GAP_MS)
-  }
-  ui.ok('dt', `${out.length}개`)
-  return out
 }
 
-/** 홈 HTML에서 아바타 이미지를 data URL로. carol와 동일한 정규식. */
-async function collectAvatar(homeHtml: string, ui: Overlay): Promise<string> {
-  try {
-    const match = homeHtml.match(/src="(https:[^"]*Icon[^"]*)"/)
-    if (!match?.[1]) {
-      ui.skip('av', '이미지 없음')
-      return ''
-    }
-    const blob = await fetch(match[1]).then((r) => r.blob())
-    const dataUrl = await new Promise<string>((resolve, reject) => {
-      const fr = new FileReader()
-      fr.onload = () => resolve(String(fr.result))
-      fr.onerror = () => reject(fr.error ?? new Error('read error'))
-      fr.readAsDataURL(blob)
-    })
-    ui.ok('av')
-    return dataUrl
-  } catch {
-    ui.fail('av')
-    return ''
-  }
+function toDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader()
+    fr.onload = () => resolve(String(fr.result))
+    fr.onerror = () => reject(fr.error ?? new Error('read error'))
+    fr.readAsDataURL(blob)
+  })
 }
 
 type PostResult = 'ok' | 'no_change' | 'initialized' | 'fail'
 
-async function postSync(
-  token: string,
-  payload: SyncPayload,
-  ui: Overlay,
-): Promise<PostResult> {
+async function postSync(token: string, payload: SyncPayload, ui: Overlay): Promise<PostResult> {
   const json = JSON.stringify(payload)
   const url = `${CAROL_ORIGIN}/sync?code=${encodeURIComponent(token)}`
-
-  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  let body: BodyInit = json
+  if (typeof CompressionStream !== 'undefined') {
     try {
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-      let body: BodyInit = json
-      if (typeof CompressionStream !== 'undefined') {
-        try {
-          body = await new Response(
-            new Blob([json]).stream().pipeThrough(new CompressionStream('gzip')),
-          ).arrayBuffer()
-          headers['Content-Encoding'] = 'gzip'
-        } catch {
-          body = json
-        }
-      }
+      body = await new Response(
+        new Blob([json]).stream().pipeThrough(new CompressionStream('gzip')),
+      ).arrayBuffer()
+      headers['Content-Encoding'] = 'gzip'
+    } catch {
+      body = json
+    }
+  }
 
-      const res = await fetchWithTimeout(url, {
+  ui.pending('sv', '전송 중')
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    const ac = new AbortController()
+    const timer = setTimeout(() => ac.abort(), SYNC_UPLOAD_TIMEOUT)
+    try {
+      const res = await fetch(url, {
         method: 'POST',
         headers,
         body,
         credentials: 'omit',
+        signal: ac.signal,
       })
       const text = (await res.text()).trim()
       if (res.ok) {
         if (text === 'no_change') {
-          ui.skip('sv', '이미 최신')
+          ui.skip('sv', '이미 최신 상태')
           return 'no_change'
         }
         if (text === 'initialized') {
@@ -453,7 +407,7 @@ async function postSync(
       }
       if (attempt < MAX_ATTEMPTS) {
         ui.pending('sv', `재시도 ${attempt + 1}/${MAX_ATTEMPTS}`)
-        await sleep(500 * attempt)
+        await sleep(800 * attempt)
         continue
       }
       ui.fail('sv', `HTTP ${res.status}${text ? ': ' + text.slice(0, 40) : ''}`)
@@ -461,11 +415,13 @@ async function postSync(
     } catch (err) {
       if (attempt < MAX_ATTEMPTS) {
         ui.pending('sv', `재시도 ${attempt + 1}/${MAX_ATTEMPTS}`)
-        await sleep(500 * attempt)
+        await sleep(800 * attempt)
         continue
       }
-      ui.fail('sv', errText(err))
+      ui.fail('sv', errText(err) === '시간 초과' ? '서버 응답 시간 초과' : '연결 실패')
       return 'fail'
+    } finally {
+      clearTimeout(timer)
     }
   }
   return 'fail'
@@ -476,11 +432,13 @@ async function postSync(
 interface Overlay {
   section(label: string): void
   row(id: string, label: string): void
+  phase(text: string): void
   pending(id: string, note?: string): void
   ok(id: string, note?: string): void
   fail(id: string, note?: string): void
   skip(id: string, note?: string): void
-  finish(kind: 'ok' | 'error' | 'muted', text: string): void
+  hadError(): boolean
+  finish(kind: 'ok' | 'error' | 'muted' | 'init', text: string): void
 }
 
 function injectStyle(): void {
@@ -495,12 +453,13 @@ function injectStyle(): void {
     `#${OV_ID} .mmp-carol-hd{display:flex;justify-content:space-between;align-items:center;`,
     `  padding-bottom:8px;margin-bottom:4px;border-bottom:1px solid #1e1e1e;}`,
     `#${OV_ID} .mmp-carol-brand{font-weight:800;font-size:14px;color:#fff;}`,
-    `#${OV_ID} .mmp-carol-brand b{color:#9333ea;}`,
     `#${OV_ID} .mmp-carol-rg{color:#666;font-size:10px;font-weight:600;letter-spacing:.6px;`,
     `  margin-left:8px;font-family:ui-monospace,Menlo,monospace;}`,
     `#${OV_ID} .mmp-carol-x{background:none;border:none;color:#888;font-size:14px;cursor:pointer;`,
     `  line-height:1;padding:2px 6px;border-radius:6px;}`,
     `#${OV_ID} .mmp-carol-x:hover{color:#fff;background:#252525;}`,
+    `#${OV_ID} .mmp-carol-phase{display:none;color:#c4b5fd;font-size:11px;line-height:1.4;`,
+    `  padding:8px 0 2px;margin-bottom:4px;border-bottom:1px solid #1e1e1e;}`,
     `#${OV_ID} .mmp-carol-sec{padding:8px 0 4px;margin-top:4px;border-bottom:1px solid #202020;`,
     `  color:#aaa;font-size:10px;font-weight:700;letter-spacing:.6px;`,
     `  font-family:ui-monospace,Menlo,monospace;}`,
@@ -514,7 +473,16 @@ function injectStyle(): void {
   document.head.appendChild(style)
 }
 
-function openOverlay(region: Region, auto: boolean): Overlay {
+const COLOR = {
+  pending: '#facc15',
+  ok: '#4ade80',
+  fail: '#f87171',
+  faint: '#666',
+  muted: '#aaa',
+  soft: '#c4b5fd',
+}
+
+function openOverlay(server: Region, auto: boolean, onAbort: () => void): Overlay {
   injectStyle()
   document.getElementById(OV_ID)?.remove()
 
@@ -522,12 +490,21 @@ function openOverlay(region: Region, auto: boolean): Overlay {
   ov.id = OV_ID
   ov.innerHTML =
     `<div class="mmp-carol-hd">` +
-    `<div><span class="mmp-carol-brand">carol<b>bot</b></span>` +
-    `<span class="mmp-carol-rg">${auto ? '자동 · ' : ''}${region === 'jp' ? 'JP' : 'INTERNATIONAL'}</span></div>` +
+    `<div><span class="mmp-carol-brand">캐롤봇 추가 북마클릿</span>` +
+    `<span class="mmp-carol-rg">${auto ? '자동 · ' : ''}${server === 'jp' ? 'JP' : 'INTERNATIONAL'}</span></div>` +
     `<button type="button" class="mmp-carol-x" aria-label="닫기">✕</button></div>` +
+    `<div class="mmp-carol-phase"></div>` +
     `<div class="mmp-carol-body"></div>`
   document.body.appendChild(ov)
-  ov.querySelector('.mmp-carol-x')?.addEventListener('click', () => ov.remove())
+
+  let done = false
+  let hadErr = false
+  ov.querySelector('.mmp-carol-x')?.addEventListener('click', () => {
+    // 진행 중에 닫으면 수집도 중단 (CLAUDE.md: 중단 버튼 필수)
+    if (!done) onAbort()
+    ov.remove()
+  })
+  const phaseEl = ov.querySelector<HTMLElement>('.mmp-carol-phase')!
   const body = ov.querySelector<HTMLElement>('.mmp-carol-body')!
 
   const setRow = (id: string, icon: string, color: string, note?: string): void => {
@@ -541,6 +518,14 @@ function openOverlay(region: Region, auto: boolean): Overlay {
       if (note !== undefined) nt.textContent = note
       nt.style.color = color
     }
+  }
+
+  const fadeOut = (): void => {
+    setTimeout(() => {
+      ov.style.transition = 'opacity .3s'
+      ov.style.opacity = '0'
+      setTimeout(() => ov.remove(), 300)
+    }, 2500)
   }
 
   return {
@@ -560,34 +545,40 @@ function openOverlay(region: Region, auto: boolean): Overlay {
       el.querySelector('.mmp-carol-lb')!.textContent = label
       body.appendChild(el)
     },
+    phase(text) {
+      phaseEl.textContent = text
+      phaseEl.style.display = text ? 'block' : 'none'
+    },
     pending(id, note) {
-      setRow(id, '↻', '#facc15', note)
+      setRow(id, '↻', COLOR.pending, note)
     },
     ok(id, note) {
-      setRow(id, '✓', '#4ade80', note ?? '')
+      setRow(id, '✓', COLOR.ok, note ?? '')
     },
     fail(id, note) {
-      setRow(id, '✕', '#f87171', note ?? '오류')
+      hadErr = true
+      setRow(id, '✕', COLOR.fail, note ?? '오류')
     },
     skip(id, note) {
-      setRow(id, '—', '#666', note ?? '건너뜀')
+      setRow(id, '—', COLOR.faint, note ?? '건너뜀')
+    },
+    hadError() {
+      return hadErr
     },
     finish(kind, text) {
-      const color = kind === 'ok' ? '#4ade80' : kind === 'error' ? '#f87171' : '#aaa'
-      const mark = kind === 'ok' ? '✓' : kind === 'error' ? '⚠' : '✨'
+      done = true
+      const color =
+        kind === 'ok' ? COLOR.ok : kind === 'error' ? COLOR.fail : kind === 'init' ? COLOR.soft : COLOR.muted
+      const mark = kind === 'ok' ? '✓' : kind === 'error' ? '⚠' : kind === 'init' ? 'INIT' : '✨'
       const fin = document.createElement('div')
       fin.className = 'mmp-carol-fin'
       fin.style.color = color
-      fin.innerHTML = `<span>${mark}</span><span></span>`
+      fin.innerHTML = `<span></span><span></span>`
+      fin.querySelector('span:first-child')!.textContent = mark
       fin.querySelector('span:last-child')!.textContent = text
       body.appendChild(fin)
-      if (kind !== 'error') {
-        setTimeout(() => {
-          ov.style.transition = 'opacity .3s'
-          ov.style.opacity = '0'
-          setTimeout(() => ov.remove(), 300)
-        }, 2500)
-      }
+      // 원본과 같음: 완료·최신이면 자동으로 닫힘, 기준선 설정·실패는 남겨 둠
+      if (kind === 'ok' || kind === 'muted') fadeOut()
     },
   }
 }

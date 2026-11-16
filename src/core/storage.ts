@@ -105,6 +105,25 @@ export const carolToken = {
 }
 
 /**
+ * carol 에 이미 보낸 단위·클래스 이미지 파일명 (리전별). 원본 북마클릿은 서버가 "이미 저장된
+ * 목록"을 끼워 주지만 익스텐션은 원격 스크립트를 안 받으므로, 이 기기에서 보낸 것을 기억해 대신함.
+ * 서버도 중복은 거르므로 지워져도 한 번 더 보낼 뿐임.
+ */
+const CAROL_RANK_IMAGES_KEY = 'carolRankImagesSent'
+type RankImagesSent = Partial<Record<'jp' | 'intl', string[]>>
+
+export const carolRankImagesSent = {
+  async get(server: 'jp' | 'intl'): Promise<string[]> {
+    return (await storage.get<RankImagesSent>(CAROL_RANK_IMAGES_KEY))?.[server] ?? []
+  },
+  async add(server: 'jp' | 'intl', files: string[]): Promise<void> {
+    const cur = (await storage.get<RankImagesSent>(CAROL_RANK_IMAGES_KEY)) ?? {}
+    const merged = Array.from(new Set([...(cur[server] ?? []), ...files])).slice(-50)
+    await storage.set(CAROL_RANK_IMAGES_KEY, { ...cur, [server]: merged })
+  },
+}
+
+/**
  * 사용자가 붙여넣은 값에서 토큰만 추출.
  * 가이드 링크 전체(`https://…/sync?code=abc`)를 붙여넣어도, 토큰만 붙여넣어도 됨.
  */

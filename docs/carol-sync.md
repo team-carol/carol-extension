@@ -25,26 +25,34 @@ maimai NET의 CSP에 막힐 수도 있다. 그래서 수집 로직(`src/features
 ## 계약 (carol와 맞춰야 하는 부분)
 
 `carolSync.ts`가 수집하는 페이지 목록과 `POST /sync` 페이로드 키는 carol
-`src/web/bookmarklet.ts`의 `bookmarkletJs`와 **동일해야 한다**.
+`src/web/bookmarklet.ts`의 `bookmarkletJs`("캐롤봇 추가 북마클릿")와 **동일해야 한다**.
 
-| 페이로드 키 | 출처 |
-|---|---|
-| `server` | `jp` (`maimaidx.jp`) / `intl` (`maimaidx-eng.com`) |
-| `h` | `/maimai-mobile/home/` |
-| `p` | `/maimai-mobile/playerData/` |
-| `r` | `/maimai-mobile/record/` |
-| `f` | `/maimai-mobile/friend/userFriendCode/` |
-| `tb4`–`tb0` | `/maimai-mobile/record/musicGenre/search/?genre=99&diff=4…0` (Re:MASTER→BASIC) |
-| `rt` | `/maimai-mobile/home/ratingTargetMusic/` (intl 전용, jp는 클리어 차트에서 산출) |
-| `m` / `em` | `/maimai-mobile/map/` · `/maimai-mobile/map/eventMap/` |
-| `a` | 홈 HTML의 아바타 이미지를 data URL로 |
-| `dt` | 최근 기록 중 신기록(`.playlog_achievement_newrecord`)의 `playlogDetail` HTML `[{idx, html}]` |
-| `js` | 항상 `[]` (원본의 "추가 북마클릿 실행 결과" 자리, carol는 빈 배열 허용) |
+carol은 프로필·레이팅·전체 기록을 maishift에서 받는다. 이 동기화는 maishift에 없는 것만 보낸다.
+
+| 페이로드 키 | 출처 | 필수 |
+|---|---|---|
+| `server` | `jp` (`maimaidx.jp`) / `intl` (`maimaidx-eng.com`) | ✓ |
+| `r` | `/maimai-mobile/record/` | ✓ |
+| `f` | `/maimai-mobile/friend/userFriendCode/` | ✓ |
+| `m` / `em` | `/maimai-mobile/map/` · `/maimai-mobile/map/eventMap/` | |
+| `uo` | `/maimai-mobile/home/userOption/updateUserOption/` | |
+| `ci` / `cm` / `cr` | `/maimai-mobile/circle/` · `circleMember/` · `circleRanking/` | |
+| `ri` | 홈 HTML의 `course_rank_*` / `class_rank_s_*` 이미지 중 안 보낸 것 `[{url, data}]` (최대 4) | |
+| `dt` | 항상 `[]` (원본도 `COLLECT_PLAY_DETAILS=false`) | |
 
 전송 형식: `Content-Type: application/json`, `CompressionStream`이 있으면 gzip
-(`Content-Encoding: gzip`). 동시성 1, 요청 간 800ms, 페이지당 최대 3회 재시도.
+(`Content-Encoding: gzip`). 응답 본문 `ok` / `no_change` / `initialized`.
 
-carol 스크래퍼가 페이지를 늘리거나 키를 바꾸면 `carolSync.ts`도 맞춰야 한다.
+### 원본과 다른 점
+
+- **순차 수집** — 원본은 페이지 3개씩 병렬이지만 여기선 `core/fetchQueue.ts`(동시성 1, 700ms)를 쓴다.
+- **에러 페이지면 즉시 중단** — 원본은 `DXNET_BUSY`를 백오프 재시도하지만, CLAUDE.md "세션 취급"에 따라
+  에러/점검 페이지가 오면 큐 전체를 멈추고 알린다. 네트워크 오류만 3회까지 재시도.
+- **`ri` 중복 판정** — 원본은 서버가 `/bookmarklet.js`에 "이미 저장된 파일명"을 끼워 주지만,
+  익스텐션은 원격 스크립트를 안 받으므로 이 기기에서 보낸 파일명(`carolRankImagesSent`)으로 대신한다.
+  서버도 중복은 거른다.
+- **방침 고지/구 도메인 경고** — 서버가 북마클릿에 끼워 넣는 문구라 옮기지 않음.
+- **오버레이 ✕ = 중단** — 진행 중에 닫으면 큐를 abort한다.
 
 ## 동기화 모드 (`끄기` / `수동` / `자동`)
 
@@ -60,9 +68,10 @@ carol 스크래퍼가 페이지를 늘리거나 키를 바꾸면 `carolSync.ts`�
   - 백그라운드 타이머·폴링 없음. 콘텐츠 스크립트가 홈에서 뜰 때가 유일한 트리거.
   - `features/carolAuto.ts`. 홈 경로 판정은 `// TODO: 실제 페이지에서 확인`.
 
-전체 동기화가 성공하면 그때 수집한 `playerData`에서 카운트를 파싱해
-`carolSyncState`(`storage.local`)에 `{ syncedAt, playCount, checkedAt }`로 저장한다 —
-자동 모드의 다음 비교 기준점. 추가 요청은 없다.
+전체 동기화가 성공하면 `carolSyncState`(`storage.local`)에 `{ syncedAt, playCount, checkedAt }`를
+저장한다. 동기화 페이로드에 `playerData`가 없으므로 `playCount`는 자동 모드가 확인한 값을 넘겨받아
+저장한다(수동 동기화는 `playCount`를 건드리지 않음 — 다음 자동 확인에서 한 번 더 동기화될 수 있으나
+서버가 `no_change`로 응답).
 
 ## 토큰
 

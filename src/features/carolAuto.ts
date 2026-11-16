@@ -66,7 +66,8 @@ async function maybeAutoSync(): Promise<void> {
     return
   }
   console.info('[mmp] carol 자동: 플레이 카운트 변화 감지, 동기화 시작')
-  await runCarolSync(token, { auto: true })
+  // 동기화 페이로드엔 playerData 가 없으므로 방금 확인한 카운트를 기준점으로 넘김
+  await runCarolSync(token, { auto: true, playCount })
 }
 
 export function initCarolAuto(): void {
