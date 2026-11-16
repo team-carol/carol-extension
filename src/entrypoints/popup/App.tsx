@@ -1,14 +1,9 @@
 import { useCallback, useEffect, useState } from 'preact/hooks'
 import {
-  type CarolMode,
-  SETTING_CAROL_SYNC,
   SETTING_SONG_SEARCH,
   SETTING_SONG_TITLES,
   SETTING_UI_TRANSLATE,
-  carolToken,
-  parseCarolToken,
   settings,
-  toCarolMode,
 } from '@/core/storage'
 
 interface Item {
@@ -55,7 +50,6 @@ export function App() {
         ))}
       </ul>
 
-      <CarolSection />
     </div>
   )
 }
@@ -111,106 +105,5 @@ function Switch({
       />
       <span class="mmp-track" aria-hidden="true" />
     </span>
-  )
-}
-
-/**
- * carol 프로필 동기화. 켜면 maimai NET 페이지에 동기화 버튼이 뜨고,
- * 누르면 프로필·기록 HTML이 carol 서버로 전송된다 — 다른 기능과 달리 외부 전송이라
- * 기본 OFF, 별도 섹션으로 분리하고 안내 문구를 붙인다.
- */
-function CarolSection() {
-  const [mode, setMode] = useState<CarolMode>('off')
-  const [ready, setReady] = useState(false)
-  const [token, setToken] = useState('')
-  const [draft, setDraft] = useState('')
-  const [saved, setSaved] = useState(false)
-
-  useEffect(() => {
-    void Promise.all([
-      settings.get<unknown>(SETTING_CAROL_SYNC, 'off'),
-      carolToken.get(),
-    ]).then(([raw, tok]) => {
-      setMode(toCarolMode(raw))
-      setToken(tok)
-      setReady(true)
-    })
-  }, [])
-
-  const toggle = useCallback((next: boolean) => {
-    const value: CarolMode = next ? 'manual' : 'off'
-    setMode(value)
-    void settings.set(SETTING_CAROL_SYNC, value)
-  }, [])
-
-  const save = useCallback(() => {
-    const parsed = parseCarolToken(draft)
-    setToken(parsed)
-    setDraft('')
-    setSaved(true)
-    void carolToken.set(parsed)
-    setTimeout(() => setSaved(false), 2000)
-  }, [draft])
-
-  const clear = useCallback(() => {
-    setToken('')
-    void carolToken.set('')
-  }, [])
-
-  const on = mode !== 'off'
-
-  return (
-    <section class="mmp-carol">
-      <label class="mmp-label">
-        <span class="mmp-text">
-          <span class="mmp-name">carol 프로필 동기화</span>
-          <span class="mmp-hint">화면의 버튼을 눌렀을 때만 동기화</span>
-        </span>
-        <Switch checked={on} disabled={!ready} onChange={toggle} />
-      </label>
-
-      {on && (
-        <div class="mmp-carol-body">
-          <p class="mmp-carol-note">
-            프로필·플레이 기록 HTML이 carol 서버(maimai.team-carol.com)로
-            전송됩니다. SEGA 로그인 비밀번호는 보내지 않습니다. 토큰은 이 기기에만
-            저장되며 브라우저 동기화에 올라가지 않습니다.
-          </p>
-
-          {token ? (
-            <div class="mmp-carol-tok">
-              <span class="mmp-carol-mask">토큰 등록됨 · ••••{token.slice(-4)}</span>
-              <button type="button" class="mmp-carol-btn2 mmp-danger" onClick={clear}>
-                삭제
-              </button>
-            </div>
-          ) : (
-            <p class="mmp-carol-hint2">
-              디스코드에서 <code>/북마클릿</code> 실행 → 받은 링크를 아래에 붙여넣기
-            </p>
-          )}
-
-          <div class="mmp-carol-in">
-            <input
-              type="text"
-              placeholder="https://maimai.team-carol.com/sync?code=…"
-              value={draft}
-              onInput={(e) => setDraft((e.target as HTMLInputElement).value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && draft.trim()) save()
-              }}
-            />
-            <button
-              type="button"
-              class="mmp-carol-btn2 mmp-primary"
-              disabled={!draft.trim()}
-              onClick={save}
-            >
-              {saved ? '저장됨' : '저장'}
-            </button>
-          </div>
-        </div>
-      )}
-    </section>
   )
 }

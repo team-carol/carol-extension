@@ -45,41 +45,7 @@ export const SETTING_SONG_TITLES = 'songTitles'
 export const SETTING_SONG_SEARCH = 'songSearch'
 
 /**
- * carol 동기화 모드. 외부 서버로 데이터를 보내는 기능이라 기본 'off' — 옵트인.
- *  - 'off'    : 아무것도 안 함
- *  - 'manual' : maimai NET 화면에 동기화 버튼 추가. 누를 때만 전송
- *
- * 자동 동기화('auto')는 없앴다 — 전송은 항상 사용자 클릭으로만 시작한다.
- */
-export const SETTING_CAROL_SYNC = 'carolSync'
-export type CarolMode = 'off' | 'manual'
-
-/** 예전 값과 호환: boolean true, 없어진 'auto' → 'manual'(버튼). */
-export function toCarolMode(raw: unknown): CarolMode {
-  if (raw === 'manual' || raw === 'auto' || raw === true) return 'manual'
-  return 'off'
-}
-
-/** 마지막 동기화 상태 (버튼 부제 표시용). storage.local (기기별). */
-const CAROL_STATE_KEY = 'carolSyncState'
-
-export interface CarolSyncState {
-  /** 마지막으로 전체 동기화가 성공한 시각 (epoch ms) */
-  syncedAt?: number
-}
-
-export const carolSyncState = {
-  async get(): Promise<CarolSyncState> {
-    return (await storage.get<CarolSyncState>(CAROL_STATE_KEY)) ?? {}
-  },
-  async patch(next: Partial<CarolSyncState>): Promise<void> {
-    const cur = await this.get()
-    await storage.set(CAROL_STATE_KEY, { ...cur, ...next })
-  },
-}
-
-/**
- * carol 동기화 토큰(`/북마클릿` 으로 발급되는 bearer 토큰).
+ * carol 토큰(`/북마클릿` 으로 발급되는 bearer 토큰). 옵션 프리셋 API 인증에 씀.
  *
  * 확장에는 암호화 at-rest 저장소가 없음. sync에 올리면 Google 클라우드까지 퍼지므로,
  * 이 기기 로컬(storage.local, 평문)에만 둔다. 값은 낮고(그 유저 carol 프로필 캐시
@@ -94,25 +60,6 @@ export const carolToken = {
   async set(value: string): Promise<void> {
     if (value) await storage.set(CAROL_TOKEN_KEY, value)
     else await storage.remove(CAROL_TOKEN_KEY)
-  },
-}
-
-/**
- * carol 에 이미 보낸 단위·클래스 이미지 파일명 (리전별). 원본 북마클릿은 서버가 "이미 저장된
- * 목록"을 끼워 주지만 익스텐션은 원격 스크립트를 안 받으므로, 이 기기에서 보낸 것을 기억해 대신함.
- * 서버도 중복은 거르므로 지워져도 한 번 더 보낼 뿐임.
- */
-const CAROL_RANK_IMAGES_KEY = 'carolRankImagesSent'
-type RankImagesSent = Partial<Record<'jp' | 'intl', string[]>>
-
-export const carolRankImagesSent = {
-  async get(server: 'jp' | 'intl'): Promise<string[]> {
-    return (await storage.get<RankImagesSent>(CAROL_RANK_IMAGES_KEY))?.[server] ?? []
-  },
-  async add(server: 'jp' | 'intl', files: string[]): Promise<void> {
-    const cur = (await storage.get<RankImagesSent>(CAROL_RANK_IMAGES_KEY)) ?? {}
-    const merged = Array.from(new Set([...(cur[server] ?? []), ...files])).slice(-50)
-    await storage.set(CAROL_RANK_IMAGES_KEY, { ...cur, [server]: merged })
   },
 }
 
