@@ -85,33 +85,26 @@ export function abortCarolSync(): void {
   activeQueue?.abort('user')
 }
 
-interface RunOpts {
-  /** 자동 모드에서 트리거된 실행 — 오버레이 헤더 표시만 다름 */
-  auto?: boolean
-  /** 자동 모드가 방금 확인한 플레이 카운트. 성공 시 다음 비교 기준으로 저장 */
-  playCount?: number
-}
-
 /**
- * 동기화 1회 실행. maimai NET 페이지에서 호출.
+ * 동기화 1회 실행. 사용자가 버튼을 눌렀을 때만 호출됨.
  * @param token carol 동기화 토큰 (`/북마클릿` 으로 발급)
  */
-export async function runCarolSync(token: string, opts: RunOpts = {}): Promise<void> {
+export async function runCarolSync(token: string): Promise<void> {
   if (running) return
   const server = detectRegion()
   if (!server) {
-    if (!opts.auto) alert('maimai DX NET 페이지에서 실행해주세요.')
+    alert('maimai DX NET 페이지에서 실행해주세요.')
     return
   }
   if (!token) {
-    if (!opts.auto) alert('carol 동기화 토큰이 없습니다. 익스텐션 팝업에서 먼저 등록하세요.')
+    alert('carol 동기화 토큰이 없습니다. 익스텐션 팝업에서 먼저 등록하세요.')
     return
   }
 
   running = true
   const queue = new FetchQueue()
   activeQueue = queue
-  const ui = openOverlay(server, opts.auto ?? false, () => queue.abort('user'))
+  const ui = openOverlay(server, () => queue.abort('user'))
   try {
     ui.section('PROFILE')
     ui.row('rc', '최근 플레이')
@@ -167,11 +160,7 @@ export async function runCarolSync(token: string, opts: RunOpts = {}): Promise<v
     ui.phase('동기화 저장 중...')
     const result = await postSync(token, payload, ui)
     if (result !== 'fail') {
-      await carolSyncState.patch({
-        syncedAt: Date.now(),
-        checkedAt: Date.now(),
-        ...(opts.playCount != null ? { playCount: opts.playCount } : {}),
-      })
+      await carolSyncState.patch({ syncedAt: Date.now() })
       if (ri.length) await carolRankImagesSent.add(server, ri.map((x) => fileName(x.url)))
     }
 
@@ -205,34 +194,6 @@ export async function runCarolSync(token: string, opts: RunOpts = {}): Promise<v
 function detectRegion(): Region | null {
   const r = region()
   return r === 'unknown' ? null : r
-}
-
-/**
- * playerData HTML에서 현 버전 플레이 카운트. carol `parsePlayerData` 이식.
- * "現バージョンプレイ回数：N回 … 累計プレイ回数：M回" (국제판은 영문 라벨).
- * 자식 div가 없는 leaf div 중 라벨을 포함한 것에서 첫 숫자를 씀.
- * 못 찾으면 null.
- */
-export function parsePlayCount(html: string): number | null {
-  if (!html) return null
-  const doc = parseHtml(html)
-  const rx = /プレイ回数|play\s*count/i
-
-  for (const div of Array.from(doc.querySelectorAll('div'))) {
-    if (div.querySelector('div')) continue // leaf만
-    const text = div.textContent ?? ''
-    if (!rx.test(text)) continue
-    const nums = (text.match(/[\d,]+/g) ?? []).map((s) => Number(s.replace(/,/g, '')))
-    if (nums.length && Number.isFinite(nums[0])) return nums[0] ?? null
-  }
-
-  const body = doc.body?.textContent ?? ''
-  const m = body.match(/(?:total\s*play|play\s*count|プレイ回数)[：:\s]*([\d,]+)/i)
-  if (m?.[1]) {
-    const n = Number(m[1].replace(/,/g, ''))
-    return Number.isFinite(n) ? n : null
-  }
-  return null
 }
 
 function errText(err: unknown): string {
@@ -495,7 +456,7 @@ const COLOR = {
   soft: 'var(--crl-accent-soft)',
 }
 
-function openOverlay(server: Region, auto: boolean, onAbort: () => void): Overlay {
+function openOverlay(server: Region, onAbort: () => void): Overlay {
   injectTokens()
   injectStyle()
   document.getElementById(OV_ID)?.remove()
@@ -506,7 +467,7 @@ function openOverlay(server: Region, auto: boolean, onAbort: () => void): Overla
   ov.innerHTML =
     `<div class="mmp-carol-hd">` +
     `<div><span class="mmp-carol-brand">캐롤봇 추가 북마클릿</span>` +
-    `<span class="mmp-carol-rg">${auto ? '자동 · ' : ''}${server === 'jp' ? 'JP' : 'INTERNATIONAL'}</span></div>` +
+    `<span class="mmp-carol-rg">${server === 'jp' ? 'JP' : 'INTERNATIONAL'}</span></div>` +
     `<button type="button" class="mmp-carol-x" aria-label="닫기">✕</button></div>` +
     `<div class="mmp-carol-phase"></div>` +
     `<div class="mmp-carol-body"></div>`

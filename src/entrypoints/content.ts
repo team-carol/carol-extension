@@ -16,7 +16,6 @@ import {
 import { destroySongTitles, initSongTitles } from '@/features/songTitles'
 import { destroySongSearch, initSongSearch } from '@/features/songSearch'
 import { destroyCarolSync, initCarolSync } from '@/features/carolButton'
-import { destroyCarolAuto, initCarolAuto } from '@/features/carolAuto'
 
 export default defineContentScript({
   matches: [
@@ -57,17 +56,10 @@ async function startSearch(): Promise<void> {
  *  2. 곡명 번역 — 백그라운드 데이터 필요
  *  3. 곡 검색 — 화면에 뜬 제목을 읽어 색인하므로 곡명 번역 뒤여야 함
  */
-/** carol 모드에 맞춰 버튼/자동 동기화를 켠다. off면 둘 다 정리. */
+/** carol 모드에 맞춰 동기화 버튼을 켜고 끈다. */
 function applyCarolMode(raw: unknown): void {
-  const mode = toCarolMode(raw)
-  if (mode === 'off') {
-    destroyCarolAuto()
-    destroyCarolSync()
-    return
-  }
-  initCarolSync() // manual · auto 공통: 버튼은 항상
-  if (mode === 'auto') initCarolAuto()
-  else destroyCarolAuto()
+  if (toCarolMode(raw) === 'manual') initCarolSync()
+  else destroyCarolSync()
 }
 
 async function setup(): Promise<void> {

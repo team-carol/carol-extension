@@ -1,5 +1,5 @@
 /**
- * maimai DX NET 페이지에 carol 동기화 버튼을 띄운다. ('manual' / 'auto' 모드 공통)
+ * maimai DX NET 페이지에 carol 동기화 버튼을 띄운다. (모드 'manual')
  *
  * 우하단 고정 버튼. 누르면 `runCarolSync`가 프로필/기록을 수집해 carol 서버로 보냄.
  * 토큰은 팝업에서 등록(`carolToken`). 없으면 버튼이 안내만 함.
@@ -116,7 +116,7 @@ export function initCarolSync(): void {
 
   void refreshSub()
 
-  // 자동 동기화가 상태를 갱신하면 부제도 따라 갱신
+  // 다른 탭에서 동기화해 상태가 바뀌면 부제도 따라 갱신
   onStorage = (changes, area) => {
     if (area === 'local' && STATE_KEY in changes) void refreshSub()
   }

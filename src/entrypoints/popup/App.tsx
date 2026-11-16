@@ -114,16 +114,6 @@ function Switch({
   )
 }
 
-const CAROL_MODES: Array<{ value: CarolMode; label: string; hint: string }> = [
-  { value: 'off', label: '끄기', hint: '' },
-  { value: 'manual', label: '수동', hint: '화면의 버튼을 눌렀을 때만 동기화' },
-  {
-    value: 'auto',
-    label: '자동',
-    hint: '홈 진입 시 플레이 카운트가 바뀌었으면 자동 동기화 (+ 버튼)',
-  },
-]
-
 /**
  * carol 프로필 동기화. 켜면 maimai NET 페이지에 동기화 버튼이 뜨고,
  * 누르면 프로필·기록 HTML이 carol 서버로 전송된다 — 다른 기능과 달리 외부 전송이라
@@ -147,9 +137,10 @@ function CarolSection() {
     })
   }, [])
 
-  const pick = useCallback((next: CarolMode) => {
-    setMode(next)
-    void settings.set(SETTING_CAROL_SYNC, next)
+  const toggle = useCallback((next: boolean) => {
+    const value: CarolMode = next ? 'manual' : 'off'
+    setMode(value)
+    void settings.set(SETTING_CAROL_SYNC, value)
   }, [])
 
   const save = useCallback(() => {
@@ -167,28 +158,16 @@ function CarolSection() {
   }, [])
 
   const on = mode !== 'off'
-  const hint = CAROL_MODES.find((m) => m.value === mode)?.hint ?? ''
 
   return (
     <section class="mmp-carol">
-      <div class="mmp-carol-hd">
-        <span class="mmp-name">carol 프로필 동기화</span>
-        <div class="mmp-seg" role="group" aria-label="carol 동기화 모드">
-          {CAROL_MODES.map((m) => (
-            <button
-              key={m.value}
-              type="button"
-              class={'mmp-seg-btn' + (mode === m.value ? ' mmp-on' : '')}
-              disabled={!ready}
-              aria-pressed={mode === m.value}
-              onClick={() => pick(m.value)}
-            >
-              {m.label}
-            </button>
-          ))}
-        </div>
-      </div>
-      {hint && <p class="mmp-carol-modehint">{hint}</p>}
+      <label class="mmp-label">
+        <span class="mmp-text">
+          <span class="mmp-name">carol 프로필 동기화</span>
+          <span class="mmp-hint">화면의 버튼을 눌렀을 때만 동기화</span>
+        </span>
+        <Switch checked={on} disabled={!ready} onChange={toggle} />
+      </label>
 
       {on && (
         <div class="mmp-carol-body">

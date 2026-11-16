@@ -54,24 +54,15 @@ carol은 프로필·레이팅·전체 기록을 maishift에서 받는다. 이 �
 - **방침 고지/구 도메인 경고** — 서버가 북마클릿에 끼워 넣는 문구라 옮기지 않음.
 - **오버레이 ✕ = 중단** — 진행 중에 닫으면 큐를 abort한다.
 
-## 동기화 모드 (`끄기` / `수동` / `자동`)
+## 켜기 / 끄기
 
-팝업 → **carol 프로필 동기화** 세그먼트에서 고른다. 기본 `끄기`.
+팝업 → **carol 프로필 동기화** 스위치. 기본 꺼짐.
 
-- **수동** — maimai NET 우하단에 `carol 동기화` 버튼을 띄운다. 누를 때만 전체
-  수집(15요청)이 돈다. 버튼 두 번째 줄에 마지막 동기화 경과 시간 표시.
-- **자동** — 수동 버튼에 더해, **홈 화면 진입 시** 조건부 자동 동기화:
-  1. `carolSyncState.checkedAt` 스로틀(10분) 안이면 아무것도 안 함
-  2. `playerData` **1요청**으로 현 버전 플레이 카운트를 읽음 (`parsePlayCount`,
-     carol `parsePlayerData` 이식)
-  3. 지난 동기화 때 카운트와 같으면 종료, 다르면(또는 첫 실행) 전체 동기화 실행
-  - 백그라운드 타이머·폴링 없음. 콘텐츠 스크립트가 홈에서 뜰 때가 유일한 트리거.
-  - `features/carolAuto.ts`. 홈 경로 판정은 `// TODO: 실제 페이지에서 확인`.
+켜면 maimai NET 우하단에 `carol 동기화` 버튼이 뜨고, **누를 때만** 전체 수집(9요청 + 이미지)이
+돈다. 버튼 두 번째 줄에 마지막 동기화 경과 시간(`carolSyncState.syncedAt`) 표시.
 
-전체 동기화가 성공하면 `carolSyncState`(`storage.local`)에 `{ syncedAt, playCount, checkedAt }`를
-저장한다. 동기화 페이로드에 `playerData`가 없으므로 `playCount`는 자동 모드가 확인한 값을 넘겨받아
-저장한다(수동 동기화는 `playCount`를 건드리지 않음 — 다음 자동 확인에서 한 번 더 동기화될 수 있으나
-서버가 `no_change`로 응답).
+자동 동기화(홈 진입 시 플레이 카운트 비교)는 **제거했다**. 외부 전송은 항상 사용자 클릭으로만
+시작한다.
 
 ## 토큰
 
@@ -90,12 +81,12 @@ DB를 손봐야 한다.
 
 ## 토글 / 정리
 
-- 모드 키: `carolSync` (`storage.sync`, `'off' | 'manual' | 'auto'`, 기본 `'off'`).
-  예전 boolean 값과 호환(`toCarolMode`: `true`→`manual`).
+- 모드 키: `carolSync` (`storage.sync`, `'off' | 'manual'`, 기본 `'off'`).
+  예전 값과 호환(`toCarolMode`: `true`·`'auto'` → `manual`).
 - 토큰 키: `carolToken` (`storage.local`)
 - 상태 키: `carolSyncState` (`storage.local`)
-- `content.ts`의 `applyCarolMode()`가 모드에 따라 `carolButton` / `carolAuto`의
-  `init()` / `destroy()`를 호출. 각 모듈은 리스너·DOM을 누수 없이 정리한다.
+- `content.ts`의 `applyCarolMode()`가 모드에 따라 `carolButton`의 `init()` / `destroy()`를
+  호출. 리스너·DOM을 누수 없이 정리하고, 진행 중인 동기화도 중단한다.
 - 실제 동기화 오버레이는 `carolSync.ts`가 매번 새로 만들고 완료 후 자동으로 사라진다.
 
 ## 남은 일
