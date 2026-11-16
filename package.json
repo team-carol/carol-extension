@@ -15,6 +15,7 @@
     "submit": "node scripts/submit.mjs"
   },
   "dependencies": {
+    "@team-carol/design-system": "^0.1.1",
     "preact": "^10.24.3"
   },
   "devDependencies": {

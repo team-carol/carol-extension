@@ -7,7 +7,9 @@
  *
  * `init()` / `destroy()` 인터페이스 — 팝업 토글로 켜고 끌 때 리스너/DOM 누수 없이 정리.
  */
+import { color, withAlpha } from '@team-carol/design-system'
 import { carolSyncState, carolToken } from '@/core/storage'
+import { CRL_SCOPE, injectTokens } from '@/core/theme'
 import { abortCarolSync, isCarolSyncRunning, runCarolSync } from '@/features/carolSync'
 
 const BTN_ID = 'mmp-carol-btn'
@@ -23,17 +25,22 @@ function injectStyle(): void {
   if (document.getElementById(STYLE_ID)) return
   const style = document.createElement('style')
   style.id = STYLE_ID
+  // 디자인 시스템 primary 버튼: accent 배경 + accentInk 글자
   style.textContent = [
     `#${BTN_ID}{position:fixed;right:16px;bottom:16px;z-index:2147483646;`,
-    `  display:flex;align-items:center;gap:8px;padding:9px 14px;border:none;border-radius:999px;`,
-    `  font-family:system-ui,-apple-system,sans-serif;color:#fff;cursor:pointer;text-align:left;`,
-    `  background:#9333ea;box-shadow:0 6px 20px rgba(147,51,234,.4);}`,
-    `#${BTN_ID}:hover{background:#7e22ce;}`,
+    `  display:flex;align-items:center;gap:var(--crl-space-3);padding:10px 16px;border:none;`,
+    `  border-radius:var(--crl-radius-pill);font-family:var(--crl-font-sans);`,
+    `  color:var(--crl-accent-ink);background:var(--crl-accent);cursor:pointer;text-align:left;`,
+    `  box-shadow:0 8px 24px ${withAlpha(color.accent, 0.35)},0 2px 6px rgba(0,0,0,.25);`,
+    `  transition:background var(--crl-motion-fast) var(--crl-motion-easing);}`,
+    `#${BTN_ID}:hover{background:var(--crl-accent-hover);}`,
+    `#${BTN_ID}:focus-visible{outline:2px solid var(--crl-focus);outline-offset:2px;}`,
     `#${BTN_ID}[disabled]{opacity:.7;cursor:progress;}`,
-    `#${BTN_ID} .mmp-carol-btn-dot{flex:none;width:7px;height:7px;border-radius:50%;background:#fff;}`,
+    `#${BTN_ID} .mmp-carol-btn-dot{flex:none;width:7px;height:7px;border-radius:50%;`,
+    `  background:var(--crl-accent-ink);}`,
     `#${BTN_ID} .mmp-carol-btn-tx{display:flex;flex-direction:column;line-height:1.25;}`,
-    `#${BTN_ID} .mmp-carol-btn-main{font-weight:600;font-size:13px;}`,
-    `#${BTN_ID} .mmp-carol-btn-sub{font-size:10px;opacity:.8;}`,
+    `#${BTN_ID} .mmp-carol-btn-main{font-weight:var(--crl-weight-semibold);font-size:13px;}`,
+    `#${BTN_ID} .mmp-carol-btn-sub{font-size:10px;opacity:.75;}`,
   ].join('')
   document.head.appendChild(style)
 }
@@ -82,10 +89,12 @@ async function onClick(): Promise<void> {
 
 export function initCarolSync(): void {
   if (btn) return
+  injectTokens()
   injectStyle()
 
   btn = document.createElement('button')
   btn.id = BTN_ID
+  btn.className = CRL_SCOPE
   btn.type = 'button'
 
   const dot = document.createElement('span')

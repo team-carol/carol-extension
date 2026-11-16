@@ -14,7 +14,9 @@
  * 원본과 다른 점: 원본은 페이지를 3개씩 병렬로 받지만 여기선 `FetchQueue`(동시성 1, 700ms)로
  * 순차 수집한다 — CLAUDE.md "세션 취급". 에러 페이지면 재시도하지 않고 즉시 중단.
  */
+import { color, withAlpha } from '@team-carol/design-system'
 import { region } from '@/core/selectors'
+import { CRL_SCOPE, injectTokens } from '@/core/theme'
 import { carolRankImagesSent, carolSyncState } from '@/core/storage'
 import { FetchQueue, QueueAbortedError, sleep } from '@/core/fetchQueue'
 
@@ -445,49 +447,62 @@ function injectStyle(): void {
   if (document.getElementById(STYLE_ID)) return
   const style = document.createElement('style')
   style.id = STYLE_ID
+  // 수치는 carol 북마클릿 오버레이와 같음. 색·글꼴은 디자인 시스템 토큰(core/theme.ts 스코프).
   style.textContent = [
-    `#${OV_ID}{position:fixed;top:16px;right:16px;z-index:2147483647;`,
-    `  background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:14px 16px;`,
-    `  font:13px system-ui,-apple-system,sans-serif;color:#ccc;min-width:280px;max-width:340px;`,
-    `  max-height:calc(100vh - 32px);overflow-y:auto;box-shadow:0 12px 36px rgba(0,0,0,.55);}`,
+    `#${OV_ID}{position:fixed;top:16px;right:16px;z-index:2147483647;box-sizing:border-box;`,
+    `  background:var(--crl-surface);border:1px solid var(--crl-border);`,
+    `  border-radius:var(--crl-radius-card);padding:16px 18px;text-align:left;`,
+    `  font:13px var(--crl-font-sans);color:var(--crl-ink-soft);min-width:300px;max-width:340px;`,
+    `  max-height:calc(100vh - 32px);overflow-y:auto;`,
+    `  box-shadow:0 12px 36px rgba(0,0,0,.55),0 0 0 1px ${withAlpha(color.accent, 0.14)};}`,
     `#${OV_ID} .mmp-carol-hd{display:flex;justify-content:space-between;align-items:center;`,
-    `  padding-bottom:8px;margin-bottom:4px;border-bottom:1px solid #1e1e1e;}`,
-    `#${OV_ID} .mmp-carol-brand{font-weight:800;font-size:14px;color:#fff;}`,
-    `#${OV_ID} .mmp-carol-rg{color:#666;font-size:10px;font-weight:600;letter-spacing:.6px;`,
-    `  margin-left:8px;font-family:ui-monospace,Menlo,monospace;}`,
-    `#${OV_ID} .mmp-carol-x{background:none;border:none;color:#888;font-size:14px;cursor:pointer;`,
-    `  line-height:1;padding:2px 6px;border-radius:6px;}`,
-    `#${OV_ID} .mmp-carol-x:hover{color:#fff;background:#252525;}`,
-    `#${OV_ID} .mmp-carol-phase{display:none;color:#c4b5fd;font-size:11px;line-height:1.4;`,
-    `  padding:8px 0 2px;margin-bottom:4px;border-bottom:1px solid #1e1e1e;}`,
-    `#${OV_ID} .mmp-carol-sec{padding:8px 0 4px;margin-top:4px;border-bottom:1px solid #202020;`,
-    `  color:#aaa;font-size:10px;font-weight:700;letter-spacing:.6px;`,
-    `  font-family:ui-monospace,Menlo,monospace;}`,
+    `  padding-bottom:10px;margin-bottom:4px;border-bottom:1px solid var(--crl-surface-2);}`,
+    `#${OV_ID} .mmp-carol-brand{font-weight:var(--crl-weight-semibold);font-size:15px;`,
+    `  color:var(--crl-ink);}`,
+    `#${OV_ID} .mmp-carol-rg{color:var(--crl-faint);font-size:10px;font-weight:600;`,
+    `  letter-spacing:.6px;margin-left:10px;font-family:var(--crl-font-mono);text-transform:uppercase;}`,
+    `#${OV_ID} .mmp-carol-x{background:none;border:none;color:var(--crl-dim);font-size:14px;`,
+    `  cursor:pointer;line-height:1;padding:2px 6px;border-radius:var(--crl-radius-inline);`,
+    `  transition:background var(--crl-motion-fast),color var(--crl-motion-fast);}`,
+    `#${OV_ID} .mmp-carol-x:hover{color:var(--crl-ink);background:var(--crl-surface-2);}`,
+    `#${OV_ID} .mmp-carol-x:focus-visible{outline:2px solid var(--crl-focus);outline-offset:2px;}`,
+    `#${OV_ID} .mmp-carol-phase{display:none;color:var(--crl-accent-soft);font-size:11px;`,
+    `  line-height:1.4;padding:8px 0 2px;margin-bottom:4px;border-bottom:1px solid var(--crl-surface-2);}`,
+    `#${OV_ID} .mmp-carol-sec{padding:8px 0 4px;margin-top:6px;border-bottom:1px solid var(--crl-surface-2);`,
+    `  color:var(--crl-muted);font-size:10px;font-weight:700;letter-spacing:.6px;`,
+    `  font-family:var(--crl-font-mono);text-transform:uppercase;}`,
     `#${OV_ID} .mmp-carol-row{display:flex;align-items:center;gap:10px;padding:3px 0;}`,
-    `#${OV_ID} .mmp-carol-ic{width:14px;text-align:center;font-size:11px;color:#666;}`,
-    `#${OV_ID} .mmp-carol-lb{flex:1;font-size:13px;color:#ccc;}`,
-    `#${OV_ID} .mmp-carol-nt{color:#666;font-size:10px;font-family:ui-monospace,Menlo,monospace;}`,
+    `#${OV_ID} .mmp-carol-ic{display:inline-block;width:14px;text-align:center;font-size:11px;`,
+    `  color:var(--crl-faint);}`,
+    `#${OV_ID} .mmp-carol-lb{flex:1;font-size:13px;color:var(--crl-ink-soft);}`,
+    `#${OV_ID} .mmp-carol-nt{color:var(--crl-faint);font-size:10px;letter-spacing:.3px;`,
+    `  font-family:var(--crl-font-mono);}`,
     `#${OV_ID} .mmp-carol-fin{display:flex;align-items:center;gap:8px;margin-top:12px;`,
-    `  padding-top:12px;border-top:1px solid #1e1e1e;font-weight:700;font-size:13px;}`,
+    `  padding-top:12px;border-top:1px solid var(--crl-surface-2);font-weight:700;font-size:13px;`,
+    `  letter-spacing:.2px;}`,
+    `#${OV_ID} .mmp-carol-fin-init{font-family:var(--crl-font-mono);font-size:10px;}`,
   ].join('')
   document.head.appendChild(style)
 }
 
+/** 행 상태색. 오버레이가 `.mmp-crl` 스코프 안이라 CSS 변수로 지정 가능. */
 const COLOR = {
-  pending: '#facc15',
-  ok: '#4ade80',
-  fail: '#f87171',
-  faint: '#666',
-  muted: '#aaa',
-  soft: '#c4b5fd',
+  pending: 'var(--crl-warning)',
+  ok: 'var(--crl-success)',
+  fail: 'var(--crl-danger)',
+  faint: 'var(--crl-faint)',
+  muted: 'var(--crl-muted)',
+  soft: 'var(--crl-accent-soft)',
 }
 
 function openOverlay(server: Region, auto: boolean, onAbort: () => void): Overlay {
+  injectTokens()
   injectStyle()
   document.getElementById(OV_ID)?.remove()
 
   const ov = document.createElement('div')
   ov.id = OV_ID
+  ov.className = CRL_SCOPE
   ov.innerHTML =
     `<div class="mmp-carol-hd">` +
     `<div><span class="mmp-carol-brand">캐롤봇 추가 북마클릿</span>` +
@@ -574,7 +589,10 @@ function openOverlay(server: Region, auto: boolean, onAbort: () => void): Overla
       fin.className = 'mmp-carol-fin'
       fin.style.color = color
       fin.innerHTML = `<span></span><span></span>`
-      fin.querySelector('span:first-child')!.textContent = mark
+      const markEl = fin.querySelector<HTMLElement>('span:first-child')!
+      markEl.textContent = mark
+      if (kind === 'init') markEl.className = 'mmp-carol-fin-init'
+      else markEl.style.fontSize = '14px'
       fin.querySelector('span:last-child')!.textContent = text
       body.appendChild(fin)
       // 원본과 같음: 완료·최신이면 자동으로 닫힘, 기준선 설정·실패는 남겨 둠

@@ -201,7 +201,7 @@ function CarolSection() {
           {token ? (
             <div class="mmp-carol-tok">
               <span class="mmp-carol-mask">토큰 등록됨 · ••••{token.slice(-4)}</span>
-              <button type="button" class="mmp-carol-btn2" onClick={clear}>
+              <button type="button" class="mmp-carol-btn2 mmp-danger" onClick={clear}>
                 삭제
               </button>
             </div>

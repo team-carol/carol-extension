@@ -9,6 +9,7 @@
  * 디스코드 봇에서 쓰던 검색어가 여기서도 그대로 먹힘.
  */
 import { SEL } from '@/core/selectors'
+import { CRL_SCOPE, injectTokens } from '@/core/theme'
 import { type AliasMap, normalizeQuery } from '@/features/songData'
 import { songKey } from '@/features/songTitles'
 
@@ -86,24 +87,39 @@ function injectStyle(): void {
   if (document.getElementById('mmp-search-style')) return
   const style = document.createElement('style')
   style.id = 'mmp-search-style'
-  // 원본 사이트 CSS와 안 부딪히게 전부 .mmp- 프리픽스
+  // 원본 사이트 CSS와 안 부딪히게 전부 .mmp- 프리픽스. 색·반경·글꼴은 디자인 시스템 토큰.
   style.textContent = [
     `.${HIDDEN} { display: none !important; }`,
-    `#${BOX_ID} { margin: 8px 10px; font-family: system-ui, sans-serif; }`,
-    `#${BOX_ID} .mmp-row { display: flex; gap: 6px; align-items: center; }`,
-    `#${BOX_ID} input { flex: 1; min-width: 0; box-sizing: border-box; padding: 8px 10px;`,
-    `  font-size: 14px; border: 1px solid rgba(0,0,0,.25); border-radius: 8px;`,
-    `  background: #fff; color: #000; }`,
-    `#${BOX_ID} button { padding: 8px 10px; font-size: 13px; cursor: pointer;`,
-    `  border: 1px solid rgba(0,0,0,.25); border-radius: 8px; background: #fff; color: #000; }`,
-    `#${BOX_ID} .mmp-count { margin-top: 4px; font-size: 11px; color: #555; }`,
+    `#${BOX_ID} { margin: 8px 10px; padding: var(--crl-space-4); box-sizing: border-box;`,
+    `  background: var(--crl-surface); border: 1px solid var(--crl-border);`,
+    `  border-radius: var(--crl-radius-control); font-family: var(--crl-font-sans);`,
+    `  color: var(--crl-ink-soft); text-align: left; }`,
+    `#${BOX_ID} .mmp-row { display: flex; gap: var(--crl-space-3); align-items: center; }`,
+    `#${BOX_ID} input { flex: 1; min-width: 0; box-sizing: border-box; padding: 8px 12px;`,
+    `  font: inherit; font-size: var(--crl-type-label-size); color: var(--crl-ink);`,
+    `  background: var(--crl-canvas-alt); border: 1px solid var(--crl-border-strong);`,
+    `  border-radius: var(--crl-radius-control); outline: none;`,
+    `  transition: border-color var(--crl-motion-fast) var(--crl-motion-easing); }`,
+    `#${BOX_ID} input::placeholder { color: var(--crl-faint); }`,
+    `#${BOX_ID} input:focus-visible { border-color: var(--crl-accent); }`,
+    `#${BOX_ID} button { flex: none; padding: 8px 12px; font: inherit; cursor: pointer;`,
+    `  font-size: var(--crl-type-caption-size); font-weight: var(--crl-weight-medium);`,
+    `  color: var(--crl-ink-2); background: var(--crl-surface-2); border: 0;`,
+    `  box-shadow: 0 0 0 1px var(--crl-border-strong); border-radius: var(--crl-radius-small);`,
+    `  transition: background var(--crl-motion-fast) var(--crl-motion-easing); }`,
+    `#${BOX_ID} button:hover { background: var(--crl-surface-hover); }`,
+    `#${BOX_ID} button:focus-visible { outline: 2px solid var(--crl-focus); outline-offset: 2px; }`,
+    `#${BOX_ID} .mmp-count { margin-top: var(--crl-space-2); font-size: 11px;`,
+    `  font-family: var(--crl-font-mono); color: var(--crl-dim); }`,
   ].join('\n')
   document.head.appendChild(style)
 }
 
 function buildBox(total: number): HTMLElement {
+  injectTokens()
   const box = document.createElement('div')
   box.id = BOX_ID
+  box.className = CRL_SCOPE
 
   const row = document.createElement('div')
   row.className = 'mmp-row'

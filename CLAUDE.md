@@ -14,6 +14,9 @@ maimai NET(세가 maimai DX 공식 스코어 열람 사이트)에 한국어 번�
 - **WXT** (Vite 기반 MV3 프레임워크) + TypeScript
 - UI는 **Preact** (번들 크기 때문에 React 대신)
 - 스타일은 CSS Modules 또는 plain CSS. 주입되는 스타일은 전부 `.mmp-` 프리픽스로 네임스페이스 분리 (원본 사이트 CSS와 충돌 방지)
+- 색·글꼴·반경·간격·모션은 **`@team-carol/design-system` 토큰(`var(--crl-*)`)만** 사용. 색 직접 기입 금지
+  - 팝업: `tokens.css` import (`:root`)
+  - maimai NET 주입 UI: `core/theme.ts`의 `injectTokens()` + 루트 요소에 `CRL_SCOPE` 클래스 (`:root` 오염 금지)
 - 패키지 매니저: pnpm
 
 ```bash
